@@ -3,7 +3,7 @@
     <div class="header-brand">
       <img class="brand-logo header-logo" src="/mochilaok-logo.jpeg" alt="MochilaOK" />
       <div>
-        <a class="back-link" routerLink="/destinations">← Voltar para minhas viagens</a>
+        <a class="back-link" href="" (click)="goToDestinations($event)">← Voltar para minhas viagens</a>
         <h1>{{ destination?.title || (loadingDestination ? 'Carregando viagem...' : 'Viagem') }}</h1>
         <p>{{ destination?.location || 'Destino ainda não informado' }}</p>
       </div>

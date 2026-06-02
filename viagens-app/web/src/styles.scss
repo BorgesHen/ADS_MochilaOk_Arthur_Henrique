@@ -870,3 +870,23 @@ h4 {
     grid-template-columns: 1fr;
   }
 }
+
+/* Ajuste: ações do painel principal e recarregamento da lista de viagens */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 860px) {
+  .hero-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+}

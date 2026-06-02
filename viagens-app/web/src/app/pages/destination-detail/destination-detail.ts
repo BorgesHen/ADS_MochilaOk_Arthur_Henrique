@@ -1,7 +1,7 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { DestinationsService } from '../../services/destinations.service';
 import { CategoriesService, CategoryMode } from '../../services/categories.service';
@@ -16,7 +16,9 @@ import { ItemsService } from '../../services/items.service';
 })
 export class DestinationDetail implements OnInit {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private fb = inject(FormBuilder);
+  private cdr = inject(ChangeDetectorRef);
 
   private destinationsApi = inject(DestinationsService);
   private categoriesApi = inject(CategoriesService);
@@ -63,6 +65,20 @@ export class DestinationDetail implements OnInit {
     this.loadAll();
   }
 
+  private refreshView() {
+    // O projeto está rodando em Angular sem Zone.js. Sem esta chamada,
+    // os dados chegam da API, mas a tela fica presa em “Carregando...” até outro clique.
+    this.cdr.detectChanges();
+  }
+
+  goToDestinations(event?: Event) {
+    event?.preventDefault();
+
+    this.router.navigate(['/destinations'], {
+      queryParams: { refresh: Date.now() },
+    });
+  }
+
   isAdmin() {
     return this.destination?.is_admin === true || this.destination?.my_role === 'ADMIN';
   }
@@ -81,22 +97,38 @@ export class DestinationDetail implements OnInit {
     this.success = null;
   }
 
+  private openInitialAdminFormsIfNeeded() {
+    if (
+      this.isAdmin() &&
+      this.categories.length === 0 &&
+      !this.showCategoryForm &&
+      !this.showItemForm &&
+      !this.showInviteForm
+    ) {
+      this.showCategoryForm = true;
+    }
+  }
+
   loadAll(options: { keepMessages?: boolean } = {}) {
     if (!options.keepMessages) {
       this.clearMessages();
     }
 
     this.loadingDestination = true;
+    this.refreshView();
 
     this.destinationsApi.get(this.destinationId).subscribe({
       next: (r: any) => {
         this.destination = r.destination;
-        this.members = r.members;
+        this.members = Array.isArray(r.members) ? r.members : [];
         this.loadingDestination = false;
+        this.openInitialAdminFormsIfNeeded();
+        this.refreshView();
       },
       error: (e: any) => {
         this.loadingDestination = false;
         this.error = e?.error?.error ?? 'Erro ao carregar viagem';
+        this.refreshView();
       },
     });
 
@@ -106,18 +138,27 @@ export class DestinationDetail implements OnInit {
 
   loadCategories() {
     this.categoriesApi.list(this.destinationId).subscribe({
-      next: (r: any[]) => (this.categories = r),
+      next: (r: any[]) => {
+        this.categories = Array.isArray(r) ? r : [];
+        this.openInitialAdminFormsIfNeeded();
+        this.refreshView();
+      },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao carregar categorias';
+        this.refreshView();
       },
     });
   }
 
   loadItems() {
     this.itemsApi.list(this.destinationId).subscribe({
-      next: (r: any[]) => (this.items = r),
+      next: (r: any[]) => {
+        this.items = Array.isArray(r) ? r : [];
+        this.refreshView();
+      },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao carregar itens';
+        this.refreshView();
       },
     });
   }
@@ -131,6 +172,7 @@ export class DestinationDetail implements OnInit {
 
     if (!this.isAdmin()) {
       this.error = 'Apenas o administrador pode convidar pessoas.';
+      this.refreshView();
       return;
     }
 
@@ -147,6 +189,7 @@ export class DestinationDetail implements OnInit {
 
     if (!this.isAdmin()) {
       this.error = 'Apenas o administrador pode criar categorias.';
+      this.refreshView();
       return;
     }
 
@@ -163,6 +206,7 @@ export class DestinationDetail implements OnInit {
 
     if (!this.isAdmin()) {
       this.error = 'Apenas o administrador pode criar itens.';
+      this.refreshView();
       return;
     }
 
@@ -193,6 +237,7 @@ export class DestinationDetail implements OnInit {
 
     if (!this.isAdmin()) {
       this.error = 'Apenas o administrador pode convidar pessoas.';
+      this.refreshView();
       return;
     }
 
@@ -202,6 +247,7 @@ export class DestinationDetail implements OnInit {
     }
 
     this.inviteLoading = true;
+    this.refreshView();
 
     this.destinationsApi.addMember(this.destinationId, this.inviteForm.getRawValue() as any).subscribe({
       next: () => {
@@ -209,11 +255,13 @@ export class DestinationDetail implements OnInit {
         this.success = 'Pessoa adicionada à viagem.';
         this.inviteForm.reset({ email: '', role: 'MEMBER' });
         this.showInviteForm = true;
+        this.refreshView();
         this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.inviteLoading = false;
         this.error = e?.error?.error ?? 'Erro ao convidar pessoa';
+        this.refreshView();
       },
     });
   }
@@ -226,10 +274,12 @@ export class DestinationDetail implements OnInit {
     this.destinationsApi.updateMemberRole(this.destinationId, member.user_id, role).subscribe({
       next: () => {
         this.success = 'Permissão atualizada.';
+        this.refreshView();
         this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao alterar permissão';
+        this.refreshView();
       },
     });
   }
@@ -243,10 +293,12 @@ export class DestinationDetail implements OnInit {
     this.destinationsApi.removeMember(this.destinationId, member.user_id).subscribe({
       next: () => {
         this.success = 'Membro removido da viagem.';
+        this.refreshView();
         this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao remover membro';
+        this.refreshView();
       },
     });
   }
@@ -263,10 +315,12 @@ export class DestinationDetail implements OnInit {
     this.destinationsApi.update(this.destinationId, { title, location }).subscribe({
       next: () => {
         this.success = 'Viagem atualizada.';
+        this.refreshView();
         this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao atualizar viagem';
+        this.refreshView();
       },
     });
   }
@@ -276,6 +330,7 @@ export class DestinationDetail implements OnInit {
 
     if (!this.isAdmin()) {
       this.error = 'Apenas o administrador pode criar categorias.';
+      this.refreshView();
       return;
     }
 
@@ -285,6 +340,7 @@ export class DestinationDetail implements OnInit {
     }
 
     this.categoryLoading = true;
+    this.refreshView();
 
     this.categoriesApi.create(this.destinationId, this.categoryForm.getRawValue() as any).subscribe({
       next: (created: any) => {
@@ -298,11 +354,13 @@ export class DestinationDetail implements OnInit {
         this.showCategoryForm = false;
         this.showItemForm = true;
         this.itemForm.patchValue({ category_id: created.id });
+        this.refreshView();
         this.loadCategories();
       },
       error: (e: any) => {
         this.categoryLoading = false;
         this.error = e?.error?.error ?? 'Erro ao criar categoria';
+        this.refreshView();
       },
     });
   }
@@ -319,6 +377,7 @@ export class DestinationDetail implements OnInit {
     const mode = modeInput.trim().toUpperCase() as CategoryMode;
     if (mode !== 'PER_USER' && mode !== 'CLAIMABLE') {
       this.error = 'Modo inválido. Use PER_USER ou CLAIMABLE.';
+      this.refreshView();
       return;
     }
 
@@ -330,11 +389,13 @@ export class DestinationDetail implements OnInit {
     this.categoriesApi.update(this.destinationId, category.id, { name, mode, sort_order }).subscribe({
       next: () => {
         this.success = 'Categoria atualizada.';
+        this.refreshView();
         this.loadCategories();
         this.loadItems();
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao atualizar categoria';
+        this.refreshView();
       },
     });
   }
@@ -350,11 +411,13 @@ export class DestinationDetail implements OnInit {
     this.categoriesApi.delete(this.destinationId, category.id).subscribe({
       next: () => {
         this.success = 'Categoria excluída.';
+        this.refreshView();
         this.loadCategories();
         this.loadItems();
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao excluir categoria';
+        this.refreshView();
       },
     });
   }
@@ -364,6 +427,7 @@ export class DestinationDetail implements OnInit {
 
     if (!this.isAdmin()) {
       this.error = 'Apenas o administrador pode criar itens.';
+      this.refreshView();
       return;
     }
 
@@ -373,6 +437,7 @@ export class DestinationDetail implements OnInit {
     }
 
     this.itemLoading = true;
+    this.refreshView();
     const selectedCategory = this.itemForm.get('category_id')?.value ?? '';
 
     this.itemsApi.create(this.destinationId, this.itemForm.getRawValue() as any).subscribe({
@@ -387,11 +452,13 @@ export class DestinationDetail implements OnInit {
           notes: '',
         });
         this.showItemForm = true;
+        this.refreshView();
         this.loadItems();
       },
       error: (e: any) => {
         this.itemLoading = false;
         this.error = e?.error?.error ?? 'Erro ao criar item';
+        this.refreshView();
       },
     });
   }
@@ -415,6 +482,7 @@ export class DestinationDetail implements OnInit {
 
     if (qtyInput.trim() !== '' && Number.isNaN(qty)) {
       this.error = 'Quantidade inválida.';
+      this.refreshView();
       return;
     }
 
@@ -429,10 +497,12 @@ export class DestinationDetail implements OnInit {
       .subscribe({
         next: () => {
           this.success = 'Item atualizado.';
+          this.refreshView();
           this.loadItems();
         },
         error: (e: any) => {
           this.error = e?.error?.error ?? 'Erro ao atualizar item';
+          this.refreshView();
         },
       });
   }
@@ -446,10 +516,12 @@ export class DestinationDetail implements OnInit {
     this.itemsApi.delete(item.id).subscribe({
       next: () => {
         this.success = 'Item excluído.';
+        this.refreshView();
         this.loadItems();
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao excluir item';
+        this.refreshView();
       },
     });
   }
@@ -461,6 +533,7 @@ export class DestinationDetail implements OnInit {
       next: () => this.loadItems(),
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao atualizar item';
+        this.refreshView();
       },
     });
   }
@@ -472,6 +545,7 @@ export class DestinationDetail implements OnInit {
       next: () => this.loadItems(),
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao atualizar item';
+        this.refreshView();
       },
     });
   }
@@ -483,6 +557,7 @@ export class DestinationDetail implements OnInit {
       next: () => this.loadItems(),
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao assumir item';
+        this.refreshView();
       },
     });
   }
@@ -494,6 +569,7 @@ export class DestinationDetail implements OnInit {
       next: () => this.loadItems(),
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao liberar item';
+        this.refreshView();
       },
     });
   }

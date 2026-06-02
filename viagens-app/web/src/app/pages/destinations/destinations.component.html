@@ -22,9 +22,15 @@
         </p>
       </div>
 
-      <button class="btn btn-primary" type="button" (click)="openCreateForm()" *ngIf="!showForm">
-        + Criar nova viagem
-      </button>
+      <div class="hero-actions">
+        <button class="btn btn-muted" type="button" (click)="load({ silent: true })" [disabled]="loadingList">
+          {{ loadingList ? 'Atualizando...' : 'Atualizar lista' }}
+        </button>
+
+        <button class="btn btn-primary" type="button" (click)="openCreateForm()" *ngIf="!showForm">
+          + Criar nova viagem
+        </button>
+      </div>
     </section>
 
     <p *ngIf="error" class="alert error-alert">{{ error }}</p>
@@ -65,6 +71,10 @@
         </div>
 
         <div class="column-body">
+          <p *ngIf="loadingList" class="empty-state compact">
+            Carregando viagens...
+          </p>
+
           <a class="travel-card link-card" *ngFor="let d of destinations" [routerLink]="['/destinations', d.id]">
             <div class="card-topline">
               <h4>{{ d.title }}</h4>
