@@ -339,6 +339,12 @@ h4 {
   font-weight: 700;
 }
 
+.field small {
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .field input,
 .field select,
 .field textarea {

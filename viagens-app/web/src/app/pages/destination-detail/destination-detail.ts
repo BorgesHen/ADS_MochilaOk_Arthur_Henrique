@@ -81,8 +81,11 @@ export class DestinationDetail implements OnInit {
     this.success = null;
   }
 
-  loadAll() {
-    this.clearMessages();
+  loadAll(options: { keepMessages?: boolean } = {}) {
+    if (!options.keepMessages) {
+      this.clearMessages();
+    }
+
     this.loadingDestination = true;
 
     this.destinationsApi.get(this.destinationId).subscribe({
@@ -206,7 +209,7 @@ export class DestinationDetail implements OnInit {
         this.success = 'Pessoa adicionada à viagem.';
         this.inviteForm.reset({ email: '', role: 'MEMBER' });
         this.showInviteForm = true;
-        this.loadAll();
+        this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.inviteLoading = false;
@@ -223,7 +226,7 @@ export class DestinationDetail implements OnInit {
     this.destinationsApi.updateMemberRole(this.destinationId, member.user_id, role).subscribe({
       next: () => {
         this.success = 'Permissão atualizada.';
-        this.loadAll();
+        this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao alterar permissão';
@@ -240,7 +243,7 @@ export class DestinationDetail implements OnInit {
     this.destinationsApi.removeMember(this.destinationId, member.user_id).subscribe({
       next: () => {
         this.success = 'Membro removido da viagem.';
-        this.loadAll();
+        this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao remover membro';
@@ -260,7 +263,7 @@ export class DestinationDetail implements OnInit {
     this.destinationsApi.update(this.destinationId, { title, location }).subscribe({
       next: () => {
         this.success = 'Viagem atualizada.';
-        this.loadAll();
+        this.loadAll({ keepMessages: true });
       },
       error: (e: any) => {
         this.error = e?.error?.error ?? 'Erro ao atualizar viagem';
