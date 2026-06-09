@@ -67,7 +67,14 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "web:build:production"
+              "buildTarget": "web:build:production",
+              "fileReplacements": [
+                  {
+                    "replace": "src/environments/environment.ts",
+                    "with": "src/environments/environment.prod.ts"
+                  }
+              ]
+              
             },
             "development": {
               "buildTarget": "web:build:development"

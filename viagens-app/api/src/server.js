@@ -10,10 +10,24 @@ const itemsRouter = require("./routes/items");
 
 const app = express();
 
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:4200")
+  .split(",")
+  .map((origin) => origin.trim());
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:4200",
-    optionsSuccessStatus: 200,
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origem bloqueada pelo CORS"));
+    },
+    credentials: true,
   })
 );
 
