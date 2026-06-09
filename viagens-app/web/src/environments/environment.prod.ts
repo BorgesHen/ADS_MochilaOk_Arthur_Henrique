@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://SUA-API-DO-RAILWAY.up.railway.app',
+  apiUrl: 'adsmochilaokarthurhenrique-production-0331.up.railway.app',
 };
