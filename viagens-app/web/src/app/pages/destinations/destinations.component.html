@@ -75,19 +75,27 @@
             Carregando viagens...
           </p>
 
-          <a class="travel-card link-card" *ngFor="let d of destinations" [routerLink]="['/destinations', d.id]">
-            <div class="card-topline">
-              <h4>{{ d.title }}</h4>
-              <span class="badge">{{ d.my_role || 'owner' }}</span>
-            </div>
+          <article class="travel-card trip-list-card" *ngFor="let d of destinations">
+            <a class="trip-main-link" [routerLink]="['/destinations', d.id]">
+              <div class="card-topline">
+                <h4>{{ d.title }}</h4>
+                <span class="badge">{{ d.my_role || 'MEMBER' }}</span>
+              </div>
 
-            <p *ngIf="d.location" class="card-description">{{ d.location }}</p>
+              <p *ngIf="d.location" class="card-description">{{ d.location }}</p>
 
-            <div class="meta-row">
-              <span>📍 {{ d.location || 'Destino não informado' }}</span>
-              <span *ngIf="d.created_at">📅 {{ d.created_at | date: 'dd/MM/yyyy' }}</span>
+              <div class="meta-row">
+                <span>📍 {{ d.location || 'Destino não informado' }}</span>
+                <span *ngIf="d.created_at">📅 {{ d.created_at | date: 'dd/MM/yyyy' }}</span>
+              </div>
+            </a>
+
+            <div *ngIf="isAdminDestination(d)" class="trip-card-actions">
+              <button class="btn btn-small btn-ghost danger-button" type="button" (click)="deleteDestination(d, $event)">
+                Excluir viagem
+              </button>
             </div>
-          </a>
+          </article>
 
           <button class="add-card-button" type="button" (click)="openCreateForm()">
             + Adicionar viagem

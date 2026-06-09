@@ -71,6 +71,10 @@ export class DestinationsComponent implements OnInit, OnDestroy {
       this.error = null;
     }
 
+    // Evita mostrar viagens antigas quando o usuário troca de conta no mesmo navegador.
+    // A API também filtra por usuário logado, mas limpar a tela antes da nova busca
+    // deixa o comportamento visual correto.
+    this.destinations = [];
     this.loadingList = true;
     this.refreshView();
 
@@ -81,6 +85,7 @@ export class DestinationsComponent implements OnInit, OnDestroy {
         this.refreshView();
       },
       error: (e: any) => {
+        this.destinations = [];
         this.loadingList = false;
         this.error = e?.error?.error ?? 'Erro ao carregar viagens';
         this.refreshView();
@@ -131,7 +136,46 @@ export class DestinationsComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  isAdminDestination(destination: any) {
+    return destination?.is_admin === true || destination?.my_role === 'ADMIN';
+  }
+
+  deleteDestination(destination: any, event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    if (!this.isAdminDestination(destination)) {
+      this.error = 'Apenas o administrador pode excluir esta viagem.';
+      this.refreshView();
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Excluir a viagem "${destination.title}"? Esta ação remove categorias, itens, responsáveis e membros. Não é possível desfazer.`
+    );
+
+    if (!confirmed) return;
+
+    this.loadingList = true;
+    this.refreshView();
+
+    this.api.delete(destination.id).subscribe({
+      next: () => {
+        this.destinations = this.destinations.filter((d) => d.id !== destination.id);
+        this.loadingList = false;
+        this.refreshView();
+      },
+      error: (e: any) => {
+        this.loadingList = false;
+        this.error = e?.error?.error ?? 'Erro ao excluir viagem';
+        this.refreshView();
+      },
+    });
+  }
+
   logout() {
+    this.destinations = [];
     this.auth.logout();
     this.router.navigate(['/login']);
   }

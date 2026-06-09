@@ -35,11 +35,14 @@ export class DestinationDetail implements OnInit {
   success: string | null = null;
   categoryLoading = false;
   itemLoading = false;
+  quickItemLoading = false;
   inviteLoading = false;
+  activeItemLoadingId: string | null = null;
 
   showInviteForm = false;
   showCategoryForm = false;
   showItemForm = false;
+  quickItemCategoryId: string | null = null;
 
   inviteForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -60,6 +63,13 @@ export class DestinationDetail implements OnInit {
     notes: [''],
   });
 
+  quickItemForm = this.fb.group({
+    title: ['', [Validators.required, Validators.minLength(2)]],
+    qty: [1],
+    unit: [''],
+    notes: [''],
+  });
+
   ngOnInit() {
     this.destinationId = this.route.snapshot.paramMap.get('id') ?? '';
     this.loadAll();
@@ -67,7 +77,7 @@ export class DestinationDetail implements OnInit {
 
   private refreshView() {
     // O projeto está rodando em Angular sem Zone.js. Sem esta chamada,
-    // os dados chegam da API, mas a tela fica presa em “Carregando...” até outro clique.
+    // os dados chegam da API, mas a tela pode ficar presa em “Carregando...” até outro clique.
     this.cdr.detectChanges();
   }
 
@@ -90,6 +100,44 @@ export class DestinationDetail implements OnInit {
 
   modeLabel(mode?: string | null) {
     return mode === 'PER_USER' ? 'Checklist por pessoa' : 'Item assumível';
+  }
+
+  statusLabel(item: any) {
+    if (item.category_mode === 'CLAIMABLE' && !item.claimed_by) {
+      return 'Disponível';
+    }
+
+    if (item.my_status === 'DONE') {
+      return item.category_mode === 'PER_USER' ? 'Feito por você' : 'Feito';
+    }
+
+    return 'Pendente';
+  }
+
+  responsibleText(item: any) {
+    if (item.category_mode === 'PER_USER') {
+      return item.my_status === 'DONE'
+        ? 'Você marcou este checklist como feito.'
+        : 'Cada participante marca se já fez esta tarefa.';
+    }
+
+    if (item.my_claimed) {
+      return 'Você ficou responsável por este item.';
+    }
+
+    if (item.claimed_by_name || item.claimed_by_email) {
+      return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
+    }
+
+    return 'Disponível para alguém assumir.';
+  }
+
+  canUserChangeItemStatus(item: any) {
+    return item.category_mode === 'PER_USER' || item.my_claimed === true;
+  }
+
+  isItemClaimedByOther(item: any) {
+    return item.category_mode === 'CLAIMABLE' && !!item.claimed_by && !item.my_claimed;
   }
 
   clearMessages() {
@@ -177,11 +225,13 @@ export class DestinationDetail implements OnInit {
     }
 
     this.showInviteForm = true;
+    this.refreshView();
   }
 
   closeInviteForm() {
     this.showInviteForm = false;
     this.inviteForm.reset({ email: '', role: 'MEMBER' });
+    this.refreshView();
   }
 
   openCategoryForm() {
@@ -194,11 +244,13 @@ export class DestinationDetail implements OnInit {
     }
 
     this.showCategoryForm = true;
+    this.refreshView();
   }
 
   closeCategoryForm() {
     this.showCategoryForm = false;
     this.categoryForm.reset({ name: '', mode: 'PER_USER', sort_order: 0 });
+    this.refreshView();
   }
 
   openItemForm(categoryId?: string) {
@@ -221,15 +273,77 @@ export class DestinationDetail implements OnInit {
     }
 
     this.showItemForm = true;
+    this.refreshView();
   }
 
   closeItemForm() {
     this.showItemForm = false;
     this.itemForm.reset({ category_id: '', title: '', qty: 1, unit: '', notes: '' });
+    this.refreshView();
   }
 
   openItemFormForCategory(category: any) {
     this.openItemForm(category.id);
+  }
+
+  openQuickItemForm(category: any) {
+    this.clearMessages();
+
+    if (!this.isAdmin()) {
+      this.error = 'Apenas o administrador pode adicionar itens.';
+      this.refreshView();
+      return;
+    }
+
+    this.quickItemCategoryId = category.id;
+    this.quickItemForm.reset({ title: '', qty: 1, unit: '', notes: '' });
+    this.refreshView();
+  }
+
+  closeQuickItemForm() {
+    this.quickItemCategoryId = null;
+    this.quickItemForm.reset({ title: '', qty: 1, unit: '', notes: '' });
+    this.refreshView();
+  }
+
+  createQuickItem(category: any) {
+    this.clearMessages();
+
+    if (!this.isAdmin()) {
+      this.error = 'Apenas o administrador pode adicionar itens.';
+      this.refreshView();
+      return;
+    }
+
+    if (this.quickItemForm.invalid) {
+      this.quickItemForm.markAllAsTouched();
+      this.refreshView();
+      return;
+    }
+
+    const payload = {
+      ...this.quickItemForm.getRawValue(),
+      category_id: category.id,
+    };
+
+    this.quickItemLoading = true;
+    this.refreshView();
+
+    this.itemsApi.create(this.destinationId, payload as any).subscribe({
+      next: () => {
+        this.quickItemLoading = false;
+        this.success = `Item adicionado na lista ${category.name}.`;
+        this.quickItemForm.reset({ title: '', qty: 1, unit: '', notes: '' });
+        this.quickItemCategoryId = category.id;
+        this.refreshView();
+        this.loadItems();
+      },
+      error: (e: any) => {
+        this.quickItemLoading = false;
+        this.error = e?.error?.error ?? 'Erro ao adicionar item';
+        this.refreshView();
+      },
+    });
   }
 
   inviteMember() {
@@ -243,6 +357,7 @@ export class DestinationDetail implements OnInit {
 
     if (this.inviteForm.invalid) {
       this.inviteForm.markAllAsTouched();
+      this.refreshView();
       return;
     }
 
@@ -325,6 +440,41 @@ export class DestinationDetail implements OnInit {
     });
   }
 
+
+  deleteDestination() {
+    this.clearMessages();
+
+    if (!this.isAdmin()) {
+      this.error = 'Apenas o administrador pode excluir esta viagem.';
+      this.refreshView();
+      return;
+    }
+
+    const title = this.destination?.title || 'esta viagem';
+    const confirmed = window.confirm(
+      `Excluir a viagem "${title}"? Esta ação remove categorias, itens, responsáveis e membros da viagem. Não é possível desfazer.`
+    );
+
+    if (!confirmed) return;
+
+    this.loadingDestination = true;
+    this.refreshView();
+
+    this.destinationsApi.delete(this.destinationId).subscribe({
+      next: () => {
+        this.loadingDestination = false;
+        this.router.navigate(['/destinations'], {
+          queryParams: { refresh: Date.now(), deleted: '1' },
+        });
+      },
+      error: (e: any) => {
+        this.loadingDestination = false;
+        this.error = e?.error?.error ?? 'Erro ao excluir viagem';
+        this.refreshView();
+      },
+    });
+  }
+
   createCategory() {
     this.clearMessages();
 
@@ -336,6 +486,7 @@ export class DestinationDetail implements OnInit {
 
     if (this.categoryForm.invalid) {
       this.categoryForm.markAllAsTouched();
+      this.refreshView();
       return;
     }
 
@@ -411,6 +562,9 @@ export class DestinationDetail implements OnInit {
     this.categoriesApi.delete(this.destinationId, category.id).subscribe({
       next: () => {
         this.success = 'Categoria excluída.';
+        if (this.quickItemCategoryId === category.id) {
+          this.closeQuickItemForm();
+        }
         this.refreshView();
         this.loadCategories();
         this.loadItems();
@@ -433,6 +587,7 @@ export class DestinationDetail implements OnInit {
 
     if (this.itemForm.invalid) {
       this.itemForm.markAllAsTouched();
+      this.refreshView();
       return;
     }
 
@@ -529,9 +684,24 @@ export class DestinationDetail implements OnInit {
   markDone(item: any) {
     this.clearMessages();
 
+    if (!this.canUserChangeItemStatus(item)) {
+      this.error = 'Assuma este item antes de marcar como feito.';
+      this.refreshView();
+      return;
+    }
+
+    this.activeItemLoadingId = item.id;
+    this.refreshView();
+
     this.itemsApi.setStatus(item.id, 'DONE').subscribe({
-      next: () => this.loadItems(),
+      next: () => {
+        this.activeItemLoadingId = null;
+        this.success = 'Item marcado como feito.';
+        this.refreshView();
+        this.loadItems();
+      },
       error: (e: any) => {
+        this.activeItemLoadingId = null;
         this.error = e?.error?.error ?? 'Erro ao atualizar item';
         this.refreshView();
       },
@@ -541,9 +711,24 @@ export class DestinationDetail implements OnInit {
   markPending(item: any) {
     this.clearMessages();
 
+    if (!this.canUserChangeItemStatus(item)) {
+      this.error = 'Assuma este item antes de alterar o status.';
+      this.refreshView();
+      return;
+    }
+
+    this.activeItemLoadingId = item.id;
+    this.refreshView();
+
     this.itemsApi.setStatus(item.id, 'PENDING').subscribe({
-      next: () => this.loadItems(),
+      next: () => {
+        this.activeItemLoadingId = null;
+        this.success = 'Item voltou para pendente.';
+        this.refreshView();
+        this.loadItems();
+      },
       error: (e: any) => {
+        this.activeItemLoadingId = null;
         this.error = e?.error?.error ?? 'Erro ao atualizar item';
         this.refreshView();
       },
@@ -553,9 +738,18 @@ export class DestinationDetail implements OnInit {
   claim(item: any) {
     this.clearMessages();
 
+    this.activeItemLoadingId = item.id;
+    this.refreshView();
+
     this.itemsApi.claim(item.id, true).subscribe({
-      next: () => this.loadItems(),
+      next: () => {
+        this.activeItemLoadingId = null;
+        this.success = 'Você assumiu este item.';
+        this.refreshView();
+        this.loadItems();
+      },
       error: (e: any) => {
+        this.activeItemLoadingId = null;
         this.error = e?.error?.error ?? 'Erro ao assumir item';
         this.refreshView();
       },
@@ -565,9 +759,18 @@ export class DestinationDetail implements OnInit {
   unclaim(item: any) {
     this.clearMessages();
 
+    this.activeItemLoadingId = item.id;
+    this.refreshView();
+
     this.itemsApi.claim(item.id, false).subscribe({
-      next: () => this.loadItems(),
+      next: () => {
+        this.activeItemLoadingId = null;
+        this.success = 'Você liberou este item.';
+        this.refreshView();
+        this.loadItems();
+      },
       error: (e: any) => {
+        this.activeItemLoadingId = null;
         this.error = e?.error?.error ?? 'Erro ao liberar item';
         this.refreshView();
       },

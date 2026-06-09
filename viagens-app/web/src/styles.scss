@@ -890,3 +890,145 @@ h4 {
     width: 100%;
   }
 }
+
+/* Inclusão e interação de itens nas listas da viagem */
+.quick-item-form {
+  display: grid;
+  gap: 0.8rem;
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.quick-item-form textarea {
+  min-height: 4rem;
+}
+
+.inline-fields {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.35fr) minmax(7rem, 0.65fr);
+  gap: 0.7rem;
+}
+
+.item-card.done-card {
+  border-color: rgba(18, 102, 60, 0.25);
+  background: linear-gradient(180deg, #ffffff, rgba(214, 245, 228, 0.35));
+}
+
+.item-card.claimed-card {
+  border-color: rgba(23, 162, 184, 0.45);
+}
+
+.status-badge.available {
+  color: var(--primary);
+  background: rgba(23, 162, 184, 0.11);
+}
+
+.responsibility-box {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 0.15rem);
+  background: rgba(229, 243, 245, 0.45);
+}
+
+.responsibility-box strong {
+  color: var(--foreground);
+  font-size: 0.82rem;
+}
+
+.responsibility-box span {
+  color: var(--muted-foreground);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.responsibility-box.mine {
+  border-color: rgba(18, 102, 60, 0.24);
+  background: rgba(214, 245, 228, 0.55);
+}
+
+.responsibility-box.available {
+  border-style: dashed;
+}
+
+.participant-actions {
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(209, 223, 230, 0.7);
+}
+
+.admin-item-actions {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed rgba(209, 223, 230, 0.95);
+}
+
+.lock-note {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.15rem;
+  padding: 0.45rem 0.65rem;
+  color: var(--muted-foreground);
+  background: rgba(229, 243, 245, 0.75);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.column-admin-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 520px) {
+  .inline-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .participant-actions .btn,
+  .admin-item-actions .btn {
+    width: 100%;
+  }
+}
+
+
+/* Exclusão de viagem */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.trip-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.trip-main-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.trip-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(15, 76, 92, 0.1);
+  padding-top: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .header-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .header-actions .btn,
+  .trip-card-actions .btn {
+    width: 100%;
+  }
+}

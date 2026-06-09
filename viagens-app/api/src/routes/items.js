@@ -188,7 +188,7 @@ router.patch("/items/:itemId/claim", requireAuth, async (req, res) => {
       INSERT INTO item_user (item_id, user_id, claimed, status)
       VALUES ($1, $2, true, 'PENDING')
       ON CONFLICT (item_id, user_id)
-      DO UPDATE SET claimed = true, updated_at = now()
+      DO UPDATE SET claimed = true, status = 'PENDING', updated_at = now()
       `,
       [itemId, userId]
     );
@@ -197,7 +197,7 @@ router.patch("/items/:itemId/claim", requireAuth, async (req, res) => {
   }
 
   await pool.query(
-    `UPDATE item_user SET claimed = false, updated_at = now() WHERE item_id = $1 AND user_id = $2`,
+    `UPDATE item_user SET claimed = false, status = 'PENDING', updated_at = now() WHERE item_id = $1 AND user_id = $2`,
     [itemId, userId]
   );
 

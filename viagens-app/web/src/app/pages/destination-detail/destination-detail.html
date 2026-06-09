@@ -9,9 +9,15 @@
       </div>
     </div>
 
-    <button *ngIf="isAdmin()" class="btn btn-muted" type="button" (click)="editDestination()">
-      Editar viagem
-    </button>
+    <div *ngIf="isAdmin()" class="header-actions">
+      <button class="btn btn-muted" type="button" (click)="editDestination()">
+        Editar viagem
+      </button>
+
+      <button class="btn btn-ghost danger-button" type="button" (click)="deleteDestination()">
+        Excluir viagem
+      </button>
+    </div>
   </header>
 
   <main class="content-area">
@@ -45,7 +51,10 @@
       <div class="section-title-row">
         <div>
           <h3>Painel do administrador</h3>
-          <p>Use os botões abaixo para montar a viagem na mesma tela.</p>
+          <p>
+            Monte as listas da viagem nesta mesma tela. Crie categorias, adicione os itens e
+            convide pessoas já cadastradas.
+          </p>
         </div>
       </div>
 
@@ -66,6 +75,10 @@
 
         <button class="btn btn-outline" type="button" (click)="openInviteForm()">
           + Adicionar membro
+        </button>
+
+        <button class="btn btn-ghost danger-button" type="button" (click)="deleteDestination()">
+          Excluir viagem
         </button>
       </div>
     </section>
@@ -171,11 +184,15 @@
           </label>
 
           <label class="field">
-            <span>Modo</span>
+            <span>Tipo de lista</span>
             <select formControlName="mode">
               <option value="PER_USER">Checklist por pessoa</option>
               <option value="CLAIMABLE">Item assumível</option>
             </select>
+            <small>
+              Checklist por pessoa: cada convidado marca sua própria tarefa.
+              Item assumível: uma pessoa fica responsável por levar/comprar.
+            </small>
           </label>
 
           <label class="field compact-field">
@@ -258,23 +275,74 @@
         </div>
 
         <div *ngIf="isAdmin()" class="column-admin-actions">
-          <button class="btn btn-small btn-primary" type="button" (click)="openItemFormForCategory(category)">
-            + Item
+          <button class="btn btn-small btn-primary" type="button" (click)="openQuickItemForm(category)">
+            + Item rápido
+          </button>
+          <button class="btn btn-small btn-muted" type="button" (click)="openItemFormForCategory(category)">
+            Formulário completo
           </button>
           <button class="btn btn-small btn-muted" type="button" (click)="editCategory(category)">
-            Editar
+            Editar lista
           </button>
           <button class="btn btn-small btn-ghost danger-button" type="button" (click)="deleteCategory(category)">
-            Excluir
+            Excluir lista
           </button>
         </div>
 
         <div class="column-body">
-          <div class="travel-card item-card" *ngFor="let item of itemsByCategory(category.id)">
+          <form
+            *ngIf="isAdmin() && quickItemCategoryId === category.id"
+            [formGroup]="quickItemForm"
+            (ngSubmit)="createQuickItem(category)"
+            class="travel-card quick-item-form"
+          >
+            <label class="field">
+              <span>Novo item nesta lista</span>
+              <input formControlName="title" placeholder="Ex: Repelente, pão, documento" />
+            </label>
+
+            <div class="inline-fields">
+              <label class="field compact-field">
+                <span>Qtd.</span>
+                <input type="number" formControlName="qty" />
+              </label>
+
+              <label class="field compact-field">
+                <span>Unidade</span>
+                <input formControlName="unit" placeholder="unidade" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Observações</span>
+              <textarea formControlName="notes" placeholder="Opcional"></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button class="btn btn-small btn-primary" type="submit" [disabled]="quickItemLoading">
+                {{ quickItemLoading ? 'Adicionando...' : 'Criar e continuar' }}
+              </button>
+
+              <button class="btn btn-small btn-ghost" type="button" (click)="closeQuickItemForm()">
+                Cancelar
+              </button>
+            </div>
+          </form>
+
+          <div
+            class="travel-card item-card"
+            [class.done-card]="item.my_status === 'DONE'"
+            [class.claimed-card]="item.my_claimed"
+            *ngFor="let item of itemsByCategory(category.id)"
+          >
             <div class="card-topline">
               <h4>{{ item.title }}</h4>
-              <span class="status-badge" [class.done]="item.my_status === 'DONE'">
-                {{ item.my_status === 'DONE' ? 'Feito' : 'Pendente' }}
+              <span
+                class="status-badge"
+                [class.done]="item.my_status === 'DONE'"
+                [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by"
+              >
+                {{ statusLabel(item) }}
               </span>
             </div>
 
@@ -282,75 +350,91 @@
 
             <div class="meta-row">
               <span *ngIf="item.qty">Qtd: {{ item.qty }} {{ item.unit || '' }}</span>
-              <span *ngIf="item.category_mode === 'CLAIMABLE' && item.claimed_by_name">
-                Responsável: {{ item.claimed_by_name }}
-              </span>
-              <span *ngIf="item.category_mode === 'CLAIMABLE' && !item.claimed_by_name">
-                Disponível para assumir
-              </span>
-              <span *ngIf="item.category_mode === 'PER_USER'">
-                Cada pessoa marca seu próprio checklist
-              </span>
+              <span>{{ modeLabel(item.category_mode) }}</span>
             </div>
 
-            <div class="card-actions">
+            <div class="responsibility-box" [class.mine]="item.my_claimed" [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by">
+              <strong>
+                {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Checklist' }}
+              </strong>
+              <span>{{ responsibleText(item) }}</span>
+            </div>
+
+            <div class="card-actions participant-actions">
               <button
                 class="btn btn-small btn-primary"
-                *ngIf="item.category_mode === 'PER_USER' || item.my_claimed"
+                *ngIf="canUserChangeItemStatus(item) && item.my_status !== 'DONE'"
                 type="button"
+                [disabled]="activeItemLoadingId === item.id"
                 (click)="markDone(item)"
               >
-                Marcar feito
+                Marcar como feito
               </button>
+
               <button
                 class="btn btn-small btn-muted"
-                *ngIf="item.category_mode === 'PER_USER' || item.my_claimed"
+                *ngIf="canUserChangeItemStatus(item) && item.my_status === 'DONE'"
                 type="button"
+                [disabled]="activeItemLoadingId === item.id"
                 (click)="markPending(item)"
               >
-                Pendente
+                Voltar para pendente
               </button>
+
               <button
                 class="btn btn-small btn-outline"
                 *ngIf="item.category_mode === 'CLAIMABLE' && !item.my_claimed && !item.claimed_by"
                 type="button"
+                [disabled]="activeItemLoadingId === item.id"
                 (click)="claim(item)"
               >
-                Assumir
+                Vou levar / assumir
               </button>
+
               <button
                 class="btn btn-small btn-outline"
                 *ngIf="item.category_mode === 'CLAIMABLE' && item.my_claimed"
                 type="button"
+                [disabled]="activeItemLoadingId === item.id"
                 (click)="unclaim(item)"
               >
-                Liberar
+                Liberar responsabilidade
               </button>
+
+              <span *ngIf="isItemClaimedByOther(item)" class="lock-note">
+                Já assumido por {{ item.claimed_by_name || item.claimed_by_email }}
+              </span>
+            </div>
+
+            <div *ngIf="isAdmin()" class="card-actions admin-item-actions">
               <button
                 class="btn btn-small btn-muted"
-                *ngIf="isAdmin()"
                 type="button"
                 (click)="editItem(item)"
               >
-                Editar
+                Editar item
               </button>
               <button
                 class="btn btn-small btn-ghost danger-button"
-                *ngIf="isAdmin()"
                 type="button"
                 (click)="deleteItem(item)"
               >
-                Excluir
+                Excluir item
               </button>
             </div>
           </div>
 
-          <button *ngIf="isAdmin()" class="add-card-button" type="button" (click)="openItemFormForCategory(category)">
-            + Adicionar item nesta categoria
+          <button
+            *ngIf="isAdmin() && quickItemCategoryId !== category.id"
+            class="add-card-button"
+            type="button"
+            (click)="openQuickItemForm(category)"
+          >
+            + Adicionar item nesta lista
           </button>
 
           <p *ngIf="itemsByCategory(category.id).length === 0" class="empty-state compact">
-            Nenhum item nesta categoria.
+            Nenhum item nesta lista.
           </p>
         </div>
       </article>

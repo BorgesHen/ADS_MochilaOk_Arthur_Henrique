@@ -35,4 +35,8 @@ export class DestinationsService {
   removeMember(id: string, userId: string) {
     return this.http.delete<any>(`${this.base}/destinations/${id}/members/${userId}`);
   }
+
+  delete(id: string) {
+    return this.http.delete<any>(`${this.base}/destinations/${id}`);
+  }
 }

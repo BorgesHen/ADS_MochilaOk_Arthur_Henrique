@@ -27,23 +27,52 @@ function normalizeRoleInput(role) {
 router.get("/", requireAuth, async (req, res) => {
   const userId = req.user.sub;
 
-  const q = await pool.query(
-    `
-    SELECT d.*,
-           CASE
-             WHEN d.owner_id = $1 THEN 'ADMIN'
-             ELSE dm.role
-           END AS my_role
-    FROM destinations d
-    LEFT JOIN destination_members dm
-      ON dm.destination_id = d.id AND dm.user_id = $1
-    WHERE d.owner_id = $1 OR dm.user_id = $1
-    ORDER BY d.created_at DESC
-    `,
-    [userId]
-  );
+  try {
+    // Garante que as viagens criadas pelo usuário atual tenham a linha de membro ADMIN.
+    // A listagem abaixo é propositalmente baseada em destination_members, porque é essa
+    // tabela que define quem pode ver cada viagem.
+    await pool.query(
+      `
+      INSERT INTO destination_members (destination_id, user_id, role)
+      SELECT id, owner_id, 'ADMIN'
+      FROM destinations
+      WHERE owner_id = $1
+      ON CONFLICT (destination_id, user_id)
+      DO UPDATE SET role = 'ADMIN'
+      `,
+      [userId]
+    );
 
-  res.json(q.rows.map(withNormalizedRole));
+    const q = await pool.query(
+      `
+      WITH minha_participacao AS (
+        SELECT DISTINCT ON (dm.destination_id)
+          dm.destination_id,
+          dm.role
+        FROM destination_members dm
+        WHERE dm.user_id = $1
+        ORDER BY
+          dm.destination_id,
+          CASE WHEN UPPER(dm.role) IN ('ADMIN', 'OWNER') THEN 0 ELSE 1 END
+      )
+      SELECT
+        d.*,
+        CASE
+          WHEN d.owner_id = $1 THEN 'ADMIN'
+          ELSE mp.role
+        END AS my_role
+      FROM minha_participacao mp
+      JOIN destinations d ON d.id = mp.destination_id
+      ORDER BY d.created_at DESC
+      `,
+      [userId]
+    );
+
+    res.json(q.rows.map(withNormalizedRole));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Erro ao carregar viagens" });
+  }
 });
 
 router.post("/", requireAuth, async (req, res) => {
@@ -154,6 +183,53 @@ router.patch("/:id", requireAuth, async (req, res) => {
     res.json({ ...q.rows[0], my_role: "ADMIN", is_admin: true });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+
+router.delete("/:id", requireAuth, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await ensureDestinationAdmin(req.user.sub, req.params.id);
+
+    await client.query("BEGIN");
+
+    const destination = await client.query(
+      `SELECT id, title FROM destinations WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (destination.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Viagem não encontrada" });
+    }
+
+    // Exclusão manual na ordem correta. Mesmo que o banco tenha ON DELETE CASCADE,
+    // manter esta sequência evita erro em bases antigas que foram criadas sem cascade.
+    await client.query(
+      `
+      DELETE FROM item_user
+      WHERE item_id IN (
+        SELECT id FROM items WHERE destination_id = $1
+      )
+      `,
+      [req.params.id]
+    );
+
+    await client.query(`DELETE FROM items WHERE destination_id = $1`, [req.params.id]);
+    await client.query(`DELETE FROM categories WHERE destination_id = $1`, [req.params.id]);
+    await client.query(`DELETE FROM destination_members WHERE destination_id = $1`, [req.params.id]);
+    await client.query(`DELETE FROM destinations WHERE id = $1`, [req.params.id]);
+
+    await client.query("COMMIT");
+
+    res.json({ ok: true, deletedId: req.params.id });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(err.status || 500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
