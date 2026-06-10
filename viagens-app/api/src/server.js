@@ -10,6 +10,13 @@ const itemsRouter = require("./routes/items");
 
 const app = express();
 
+console.log("[BOOT] MochilaOk API iniciando...");
+console.log("[BOOT] NODE_ENV:", process.env.NODE_ENV);
+console.log("[BOOT] PORT recebida:", process.env.PORT);
+console.log("[BOOT] DATABASE_URL configurada:", Boolean(process.env.DATABASE_URL));
+console.log("[BOOT] JWT_SECRET configurado:", Boolean(process.env.JWT_SECRET));
+console.log("[BOOT] CORS_ORIGIN:", process.env.CORS_ORIGIN);
+
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:4200")
   .split(",")
   .map((origin) => origin.trim());
