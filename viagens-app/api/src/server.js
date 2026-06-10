@@ -5,7 +5,7 @@ const express = require("express");
 const app = express();
 
 console.log("[BOOT] MochilaOk API iniciando...");
-console.log("[BOOT] CORS FIX ACTIVE 2026-06-10");
+console.log("[BOOT] CORS FIX DEFINITIVO 2026-06-10 02");
 console.log("[BOOT] NODE_ENV:", process.env.NODE_ENV);
 console.log("[BOOT] PORT recebida:", process.env.PORT);
 console.log("[BOOT] DATABASE_URL configurada:", Boolean(process.env.DATABASE_URL));
@@ -13,11 +13,6 @@ console.log("[BOOT] JWT_SECRET configurado:", Boolean(process.env.JWT_SECRET));
 console.log("[BOOT] CORS_ORIGIN:", process.env.CORS_ORIGIN);
 console.log("[BOOT] CORS:", process.env.CORS);
 
-/**
- * CORS precisa ficar ANTES de qualquer rota.
- * Este bloco responde OPTIONS /auth/login e OPTIONS /auth/register
- * antes do Express tentar procurar uma rota.
- */
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
@@ -72,9 +67,6 @@ app.get("/debug-cors", (req, res) => {
   });
 });
 
-/**
- * Importar rotas depois do CORS.
- */
 const authRoutes = require("./routes/auth");
 const destinationsRouter = require("./routes/destinations");
 const categoriesRouter = require("./routes/categories");
