@@ -2,14 +2,10 @@ require("dotenv").config();
 
 const express = require("express");
 
-const authRoutes = require("./routes/auth");
-const destinationsRouter = require("./routes/destinations");
-const categoriesRouter = require("./routes/categories");
-const itemsRouter = require("./routes/items");
-
 const app = express();
 
 console.log("[BOOT] MochilaOk API iniciando...");
+console.log("[BOOT] CORS FIX ACTIVE 2026-06-10");
 console.log("[BOOT] NODE_ENV:", process.env.NODE_ENV);
 console.log("[BOOT] PORT recebida:", process.env.PORT);
 console.log("[BOOT] DATABASE_URL configurada:", Boolean(process.env.DATABASE_URL));
@@ -17,27 +13,20 @@ console.log("[BOOT] JWT_SECRET configurado:", Boolean(process.env.JWT_SECRET));
 console.log("[BOOT] CORS_ORIGIN:", process.env.CORS_ORIGIN);
 console.log("[BOOT] CORS:", process.env.CORS);
 
-const allowedOrigins = (
-  process.env.CORS_ORIGIN ||
-  process.env.CORS ||
-  "*"
-)
-  .split(",")
-  .map((origin) => origin.trim().replace(/\/$/, ""));
-
-console.log("[BOOT] CORS_ORIGIN final:", allowedOrigins);
-
+/**
+ * CORS precisa ficar ANTES de qualquer rota.
+ * Este bloco responde OPTIONS /auth/login e OPTIONS /auth/register
+ * antes do Express tentar procurar uma rota.
+ */
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const normalizedOrigin = origin ? origin.replace(/\/$/, "") : "";
 
-  const isAllowed =
-    !origin ||
-    allowedOrigins.includes("*") ||
-    allowedOrigins.includes(normalizedOrigin);
+  console.log(`[REQ] ${req.method} ${req.originalUrl} origin=${origin || "-"}`);
 
-  if (isAllowed && origin) {
+  if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
   }
 
   res.setHeader(
@@ -50,22 +39,12 @@ app.use((req, res, next) => {
     "Content-Type,Authorization"
   );
 
+  res.setHeader("Access-Control-Max-Age", "86400");
   res.setHeader("Vary", "Origin");
 
   if (req.method === "OPTIONS") {
-    console.log("[CORS] Preflight:", origin, "Permitido:", isAllowed);
-    return res.sendStatus(isAllowed ? 204 : 403);
-  }
-
-  if (!isAllowed) {
-    console.warn("[CORS] Origem bloqueada:", origin);
-    console.warn("[CORS] Origens permitidas:", allowedOrigins);
-
-    return res.status(403).json({
-      error: "Origem bloqueada pelo CORS",
-      origin,
-      allowedOrigins,
-    });
+    console.log(`[CORS] Preflight respondido: ${req.originalUrl}`);
+    return res.status(204).end();
   }
 
   return next();
@@ -83,6 +62,23 @@ app.get("/health", (req, res) => {
     service: "mochilaok-api",
   });
 });
+
+app.get("/debug-cors", (req, res) => {
+  res.json({
+    ok: true,
+    origin: req.headers.origin || null,
+    corsOrigin: process.env.CORS_ORIGIN || null,
+    cors: process.env.CORS || null,
+  });
+});
+
+/**
+ * Importar rotas depois do CORS.
+ */
+const authRoutes = require("./routes/auth");
+const destinationsRouter = require("./routes/destinations");
+const categoriesRouter = require("./routes/categories");
+const itemsRouter = require("./routes/items");
 
 app.use("/auth", authRoutes);
 app.use("/destinations", destinationsRouter);
