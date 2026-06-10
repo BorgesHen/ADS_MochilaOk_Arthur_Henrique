@@ -38,8 +38,16 @@ app.get("/", (req, res) => {
   res.send("API MochilaOk rodando. Teste /health");
 });
 
+app.get("/", (req, res) => {
+  res.json({
+    ok: true,
+    service: "mochilaok-api",
+    message: "API MochilaOk online",
+  });
+});
+
 app.get("/health", (req, res) => {
-  res.status(200).json({
+  res.json({
     ok: true,
     service: "mochilaok-api",
   });
@@ -55,6 +63,12 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({ error: err.message || "Erro interno" });
 });
+
+console.log("[BOOT] MochilaOk API iniciando...");
+console.log("[BOOT] NODE_ENV:", process.env.NODE_ENV);
+console.log("[BOOT] PORT recebida:", process.env.PORT);
+console.log("[BOOT] DATABASE_URL configurada:", Boolean(process.env.DATABASE_URL));
+console.log("[BOOT] JWT_SECRET configurado:", Boolean(process.env.JWT_SECRET));
 
 const PORT = process.env.PORT || 3001;
 
