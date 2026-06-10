@@ -38,7 +38,12 @@ app.get("/", (req, res) => {
   res.send("API MochilaOk rodando. Teste /health");
 });
 
-app.get("/health", (req, res) => res.send("OK"));
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "mochilaok-api",
+  });
+});
 
 app.use("/auth", authRoutes);
 app.use("/destinations", destinationsRouter);
@@ -52,6 +57,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
