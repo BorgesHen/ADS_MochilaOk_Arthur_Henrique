@@ -39,7 +39,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.json({
+  res.status(200).json({
     ok: true,
     service: "mochilaok-api",
     message: "API MochilaOk online",
@@ -47,7 +47,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({
+  res.status(200).json({
     ok: true,
     service: "mochilaok-api",
   });
@@ -70,8 +70,8 @@ console.log("[BOOT] PORT recebida:", process.env.PORT);
 console.log("[BOOT] DATABASE_URL configurada:", Boolean(process.env.DATABASE_URL));
 console.log("[BOOT] JWT_SECRET configurado:", Boolean(process.env.JWT_SECRET));
 
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando em 0.0.0.0:${PORT}`);
 });
