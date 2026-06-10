@@ -8,14 +8,17 @@ RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 COPY . .
 
-RUN npm run build
+RUN npm run build -- --configuration production
 
-RUN mkdir -p /site && \
-    if find dist -path "*/browser/index.html" -print -quit | grep -q .; then \
-      SITE_DIR=$(dirname "$(find dist -path "*/browser/index.html" -print -quit)") && cp -r "$SITE_DIR"/* /site/; \
-    else \
-      SITE_DIR=$(dirname "$(find dist -name index.html -print -quit)") && cp -r "$SITE_DIR"/* /site/; \
-    fi
+RUN set -eux; \
+    INDEX_FILE="$(find dist -name index.html -type f | head -n 1)"; \
+    echo "INDEX_FILE=$INDEX_FILE"; \
+    test -n "$INDEX_FILE"; \
+    SITE_DIR="$(dirname "$INDEX_FILE")"; \
+    mkdir -p /site; \
+    cp -R "$SITE_DIR"/. /site; \
+    test -f /site/index.html; \
+    ls -la /site
 
 FROM caddy:2-alpine
 
