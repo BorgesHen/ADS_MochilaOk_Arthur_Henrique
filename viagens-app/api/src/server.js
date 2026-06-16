@@ -4,6 +4,11 @@ const express = require("express");
 
 const app = express();
 
+const authRoutes = require("./routes/auth");
+const destinationsRouter = require("./routes/destinations");
+const categoriesRouter = require("./routes/categories");
+const itemsRouter = require("./routes/items");
+
 console.log("[BOOT] MochilaOk API iniciando...");
 console.log("[BOOT] CORS FIX DEFINITIVO 2026-06-10 02");
 console.log("[BOOT] NODE_ENV:", process.env.NODE_ENV);
@@ -67,16 +72,11 @@ app.get("/debug-cors", (req, res) => {
   });
 });
 
-const authRoutes = require("./routes/auth");
-const destinationsRouter = require("./routes/destinations");
-const categoriesRouter = require("./routes/categories");
-const itemsRouter = require("./routes/items");
 
 app.use("/auth", authRoutes);
 app.use("/destinations", destinationsRouter);
 app.use("/destinations", categoriesRouter);
 app.use("/destinations", itemsRouter);
-app.use(itemsRouter);
 
 const PORT = Number(process.env.PORT) || 3001;
 
