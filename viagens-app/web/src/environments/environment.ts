@@ -1,4 +1,4 @@
 export const environment = {
   production: false,
-  apiUrl: 'https://adsmochilaokarthurhenrique-production.up.railway.app',
+  apiUrl: 'https://mochilaok.up.railway.app',
 };
