@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://mochilaok.up.railway.app',
+  apiUrl: 'sunny-light-production-5399.up.railway.app',
 };
