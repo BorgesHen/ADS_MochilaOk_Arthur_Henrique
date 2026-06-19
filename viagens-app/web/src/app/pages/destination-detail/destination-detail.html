@@ -1,20 +1,41 @@
 <div class="app-shell">
   <header class="app-header">
     <div class="header-brand">
-      <img class="brand-logo header-logo" src="/mochilaok-logo.jpeg" alt="MochilaOK" />
+      <img
+        class="brand-logo header-logo"
+        src="/mochilaok-logo.jpeg"
+        alt="MochilaOK"
+      />
+
       <div>
-        <a class="back-link" href="" (click)="goToDestinations($event)">← Voltar para minhas viagens</a>
-        <h1>{{ destination?.title || (loadingDestination ? 'Carregando viagem...' : 'Viagem') }}</h1>
-        <p>{{ destination?.location || 'Destino ainda não informado' }}</p>
+        <a class="back-link" href="" (click)="goToDestinations($event)">
+          ← Voltar para minhas viagens
+        </a>
+
+        <h1>
+          {{ destination?.title || (loadingDestination ? 'Carregando viagem...' : 'Viagem') }}
+        </h1>
+
+        <p>
+          {{ destination?.location || 'Destino ainda não informado' }}
+        </p>
       </div>
     </div>
 
     <div *ngIf="isAdmin()" class="header-actions">
-      <button class="btn btn-muted" type="button" (click)="editDestination()">
+      <button
+        class="btn btn-muted"
+        type="button"
+        (click)="editDestination()"
+      >
         Editar viagem
       </button>
 
-      <button class="btn btn-ghost danger-button" type="button" (click)="deleteDestination()">
+      <button
+        class="btn btn-ghost danger-button"
+        type="button"
+        (click)="deleteDestination()"
+      >
         Excluir viagem
       </button>
     </div>
@@ -24,42 +45,71 @@
     <section class="hero-card detail-hero">
       <div>
         <span class="eyebrow">Organização estilo Trello</span>
-        <h2>Monte categorias, convide pessoas e distribua responsabilidades.</h2>
+
+        <h2>
+          Monte categorias, convide pessoas e distribua responsabilidades.
+        </h2>
+
         <p>
-          Administradores criam e editam a viagem. Convidados interagem com os checklists,
-          marcam tarefas e assumem itens como compras ou objetos para levar.
+          Administradores criam e editam a viagem. Convidados interagem com os
+          checklists, marcam tarefas e assumem itens como compras ou objetos
+          para levar.
         </p>
       </div>
 
       <div class="stats-row">
-        <span class="stat-pill">{{ roleLabel(destination?.my_role) }}</span>
-        <span class="stat-pill">{{ categories.length }} categorias</span>
-        <span class="stat-pill">{{ items.length }} itens</span>
-        <span class="stat-pill">{{ members.length }} membros</span>
+        <span class="stat-pill">
+          {{ roleLabel(destination?.my_role) }}
+        </span>
+
+        <span class="stat-pill">
+          {{ categories.length }} categorias
+        </span>
+
+        <span class="stat-pill">
+          {{ items.length }} itens
+        </span>
+
+        <span class="stat-pill">
+          {{ members.length }} membros
+        </span>
       </div>
     </section>
 
-    <p *ngIf="error" class="alert error-alert">{{ error }}</p>
-    <p *ngIf="success" class="alert success-alert">{{ success }}</p>
+    <p *ngIf="error" class="alert error-alert">
+      {{ error }}
+    </p>
+
+    <p *ngIf="success" class="alert success-alert">
+      {{ success }}
+    </p>
 
     <section *ngIf="loadingDestination" class="form-card loading-card">
       <h3>Carregando permissões da viagem...</h3>
-      <p>Aguarde enquanto o sistema verifica se você é administrador ou convidado.</p>
+
+      <p>
+        Aguarde enquanto o sistema verifica se você é administrador ou convidado.
+      </p>
     </section>
 
     <section *ngIf="isAdmin()" class="form-card admin-quick-panel">
       <div class="section-title-row">
         <div>
           <h3>Painel do administrador</h3>
+
           <p>
-            Monte as listas da viagem nesta mesma tela. Crie categorias, adicione os itens e
-            convide pessoas já cadastradas.
+            Monte as listas da viagem nesta mesma tela. Crie categorias,
+            adicione os itens e convide pessoas já cadastradas.
           </p>
         </div>
       </div>
 
       <div class="admin-quick-actions">
-        <button class="btn btn-primary" type="button" (click)="openCategoryForm()">
+        <button
+          class="btn btn-primary"
+          type="button"
+          (click)="openCategoryForm()"
+        >
           + Adicionar categoria
         </button>
 
@@ -73,14 +123,129 @@
           + Adicionar item
         </button>
 
-        <button class="btn btn-outline" type="button" (click)="openInviteForm()">
+        <button
+          class="btn btn-outline"
+          type="button"
+          (click)="openInviteForm()"
+        >
           + Adicionar membro
         </button>
 
-        <button class="btn btn-ghost danger-button" type="button" (click)="deleteDestination()">
+        <button
+          class="btn btn-ghost danger-button"
+          type="button"
+          (click)="deleteDestination()"
+        >
           Excluir viagem
         </button>
       </div>
+    </section>
+
+    <section class="form-card ai-card">
+      <div class="section-title-row">
+        <div>
+          <h3>Sugestões com IA</h3>
+
+          <p>
+            Receba ideias de pontos turísticos, restaurantes, passeios,
+            entretenimento e itens para organizar melhor esta viagem.
+          </p>
+        </div>
+      </div>
+
+      <form
+        [formGroup]="aiForm"
+        class="form-grid two-cols"
+        (ngSubmit)="generateAiSuggestions()"
+      >
+        <label class="field">
+          <span>Duração da viagem</span>
+
+          <input
+            formControlName="days"
+            placeholder="Ex: 3 dias, 1 semana"
+          />
+        </label>
+
+        <label class="field compact-field">
+          <span>Orçamento</span>
+
+          <select formControlName="budget">
+            <option value="econômico">Econômico</option>
+            <option value="moderado">Moderado</option>
+            <option value="confortável">Confortável</option>
+          </select>
+        </label>
+
+        <label class="field compact-field">
+          <span>Estilo</span>
+
+          <select formControlName="travelStyle">
+            <option value="equilibrado">Equilibrado</option>
+            <option value="família">Família</option>
+            <option value="aventura">Aventura</option>
+            <option value="cultural">Cultural</option>
+            <option value="gastronômico">Gastronômico</option>
+          </select>
+        </label>
+
+        <label class="field span-all">
+          <span>Interesses</span>
+
+          <input
+            formControlName="interests"
+            placeholder="Ex: praia, museus, trilhas, comida italiana"
+          />
+
+          <small>
+            Separe os interesses por vírgula. Exemplo: praia, restaurantes,
+            trilhas, museus.
+          </small>
+        </label>
+
+        <div class="form-actions span-all">
+          <button
+            class="btn btn-primary"
+            type="submit"
+            [disabled]="aiLoading"
+          >
+            {{ aiLoading ? 'Pesquisando...' : 'Sugerir passeios com IA' }}
+          </button>
+        </div>
+      </form>
+
+      <p *ngIf="aiError" class="error-message">
+        {{ aiError }}
+      </p>
+
+      <article *ngIf="aiAnswer" class="ai-result">
+        <h4>Ideias para esta viagem</h4>
+
+        <div class="ai-answer">
+          {{ aiAnswer }}
+        </div>
+
+        <div *ngIf="aiSources.length > 0" class="ai-sources">
+          <h5>Fontes do Google Maps</h5>
+
+          <ul>
+            <li *ngFor="let source of aiSources">
+              <a
+                [href]="source.uri"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {{ source.title }}
+              </a>
+            </li>
+          </ul>
+
+          <small>
+            Dados e fontes fornecidos pelo
+            <span translate="no">Google Maps</span>.
+          </small>
+        </div>
+      </article>
     </section>
 
     <section class="admin-layout">
@@ -88,109 +253,46 @@
         <div class="section-title-row">
           <div>
             <h3>Participantes da viagem</h3>
-            <p>O criador da viagem é administrador. Convidados podem marcar e assumir itens.</p>
+
+            <p>
+              O criador da viagem é administrador. Convidados podem marcar e
+              assumir itens.
+            </p>
           </div>
 
-          <section class="form-card ai-card">
-  <div class="section-title-row">
-    <div>
-      <h3>Sugestões com IA</h3>
-      <p>
-        Receba ideias de pontos turísticos, restaurantes, passeios e itens para
-        organizar melhor esta viagem.
-      </p>
-    </div>
-  </div>
-
-  <form
-    [formGroup]="aiForm"
-    class="form-grid"
-    (ngSubmit)="generateAiSuggestions()"
-  >
-    <div>
-      <label>Duração da viagem</label>
-      <input formControlName="days" placeholder="Ex: 3 dias, 1 semana" />
-    </div>
-
-    <div>
-      <label>Orçamento</label>
-      <select formControlName="budget">
-        <option value="econômico">Econômico</option>
-        <option value="moderado">Moderado</option>
-        <option value="confortável">Confortável</option>
-      </select>
-    </div>
-
-    <div>
-      <label>Estilo</label>
-      <select formControlName="travelStyle">
-        <option value="equilibrado">Equilibrado</option>
-        <option value="família">Família</option>
-        <option value="aventura">Aventura</option>
-        <option value="cultural">Cultural</option>
-        <option value="gastronômico">Gastronômico</option>
-      </select>
-    </div>
-
-    <div>
-      <label>Interesses</label>
-      <input
-        formControlName="interests"
-        placeholder="Ex: praia, museus, trilhas, comida italiana"
-      />
-    </div>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" type="submit" [disabled]="aiLoading">
-        {{ aiLoading ? 'Pesquisando...' : 'Sugerir passeios com IA' }}
-      </button>
-    </div>
-  </form>
-
-  <p *ngIf="aiError" class="error-message">
-    {{ aiError }}
-  </p>
-
-  <article *ngIf="aiAnswer" class="ai-result">
-    <h4>Ideias para esta viagem</h4>
-
-    <div class="ai-answer">
-      {{ aiAnswer }}
-    </div>
-
-    <div *ngIf="aiSources.length > 0" class="ai-sources">
-      <h5>Fontes do Google Maps</h5>
-
-      <ul>
-        <li *ngFor="let source of aiSources">
-          <a [href]="source.uri" target="_blank" rel="noopener noreferrer">
-            {{ source.title }}
-          </a>
-        </li>
-      </ul>
-
-      <small>
-        Dados e fontes fornecidos pelo
-        <span translate="no">Google Maps</span>.
-      </small>
-    </div>
-  </article>
-</section>
-
-          <button *ngIf="isAdmin() && !showInviteForm" class="btn btn-small btn-primary" type="button" (click)="openInviteForm()">
+          <button
+            *ngIf="isAdmin() && !showInviteForm"
+            class="btn btn-small btn-primary"
+            type="button"
+            (click)="openInviteForm()"
+          >
             + Membro
           </button>
         </div>
 
-        <form *ngIf="isAdmin() && showInviteForm" [formGroup]="inviteForm" (ngSubmit)="inviteMember()" class="form-grid invite-form">
+        <form
+          *ngIf="isAdmin() && showInviteForm"
+          [formGroup]="inviteForm"
+          (ngSubmit)="inviteMember()"
+          class="form-grid invite-form"
+        >
           <label class="field">
             <span>E-mail da pessoa</span>
-            <input formControlName="email" placeholder="email@exemplo.com" />
-            <small>Use o e-mail de um usuário que já tenha conta cadastrada no MochilaOK.</small>
+
+            <input
+              formControlName="email"
+              placeholder="email@exemplo.com"
+            />
+
+            <small>
+              Use o e-mail de um usuário que já tenha conta cadastrada no
+              MochilaOK.
+            </small>
           </label>
 
           <label class="field compact-field">
             <span>Permissão</span>
+
             <select formControlName="role">
               <option value="MEMBER">Convidado</option>
               <option value="ADMIN">Administrador</option>
@@ -198,11 +300,19 @@
           </label>
 
           <div class="form-actions span-all">
-            <button class="btn btn-primary" type="submit" [disabled]="inviteLoading">
+            <button
+              class="btn btn-primary"
+              type="submit"
+              [disabled]="inviteLoading"
+            >
               {{ inviteLoading ? 'Convidando...' : 'Convidar pessoa' }}
             </button>
 
-            <button class="btn btn-ghost" type="button" (click)="closeInviteForm()">
+            <button
+              class="btn btn-ghost"
+              type="button"
+              (click)="closeInviteForm()"
+            >
               Fechar
             </button>
           </div>
@@ -216,8 +326,13 @@
             </div>
 
             <div class="member-actions">
-              <span class="badge">{{ roleLabel(member.role) }}</span>
-              <span *ngIf="member.is_owner" class="badge owner-badge">Criador</span>
+              <span class="badge">
+                {{ roleLabel(member.role) }}
+              </span>
+
+              <span *ngIf="member.is_owner" class="badge owner-badge">
+                Criador
+              </span>
 
               <select
                 *ngIf="isAdmin() && !member.is_owner"
@@ -239,42 +354,68 @@
             </div>
           </div>
 
-          <p *ngIf="!loadingDestination && members.length === 0" class="empty-state compact">
-            Nenhum participante carregado. Rode o SQL de permissões para garantir que o criador da viagem esteja como administrador.
+          <p
+            *ngIf="!loadingDestination && members.length === 0"
+            class="empty-state compact"
+          >
+            Nenhum participante carregado. Rode o SQL de permissões para garantir
+            que o criador da viagem esteja como administrador.
           </p>
         </div>
       </article>
 
-      <article *ngIf="!loadingDestination && !isAdmin()" class="form-card guest-card">
+      <article
+        *ngIf="!loadingDestination && !isAdmin()"
+        class="form-card guest-card"
+      >
         <h3>Você está como convidado</h3>
+
         <p>
-          Você pode marcar tarefas como feitas, assumir itens disponíveis e liberar itens que assumiu.
-          A criação e edição de categorias, itens e participantes fica com o administrador da viagem.
+          Você pode marcar tarefas como feitas, assumir itens disponíveis e
+          liberar itens que assumiu. A criação e edição de categorias, itens e
+          participantes fica com o administrador da viagem.
         </p>
       </article>
     </section>
 
-    <section *ngIf="isAdmin() && (showCategoryForm || showItemForm)" class="forms-panel" [class.single-panel]="!(showCategoryForm && showItemForm)">
+    <section
+      *ngIf="isAdmin() && (showCategoryForm || showItemForm)"
+      class="forms-panel"
+      [class.single-panel]="!(showCategoryForm && showItemForm)"
+    >
       <article *ngIf="showCategoryForm" class="form-card">
         <div class="section-title-row">
           <div>
             <h3>Nova categoria</h3>
-            <p>Exemplos: roupas, higiene, documentos, comida.</p>
+
+            <p>
+              Exemplos: roupas, higiene, documentos, comida.
+            </p>
           </div>
         </div>
 
-        <form [formGroup]="categoryForm" (ngSubmit)="createCategory()" class="form-grid">
+        <form
+          [formGroup]="categoryForm"
+          (ngSubmit)="createCategory()"
+          class="form-grid"
+        >
           <label class="field">
             <span>Nome da categoria</span>
-            <input formControlName="name" placeholder="Ex: Roupas" />
+
+            <input
+              formControlName="name"
+              placeholder="Ex: Roupas"
+            />
           </label>
 
           <label class="field">
             <span>Tipo de lista</span>
+
             <select formControlName="mode">
               <option value="PER_USER">Checklist por pessoa</option>
               <option value="CLAIMABLE">Item assumível</option>
             </select>
+
             <small>
               Checklist por pessoa: cada convidado marca sua própria tarefa.
               Item assumível: uma pessoa fica responsável por levar/comprar.
@@ -283,15 +424,27 @@
 
           <label class="field compact-field">
             <span>Ordem</span>
-            <input type="number" formControlName="sort_order" />
+
+            <input
+              type="number"
+              formControlName="sort_order"
+            />
           </label>
 
           <div class="form-actions span-all">
-            <button class="btn btn-primary" type="submit" [disabled]="categoryLoading">
+            <button
+              class="btn btn-primary"
+              type="submit"
+              [disabled]="categoryLoading"
+            >
               {{ categoryLoading ? 'Criando...' : 'Criar categoria' }}
             </button>
 
-            <button class="btn btn-ghost" type="button" (click)="closeCategoryForm()">
+            <button
+              class="btn btn-ghost"
+              type="button"
+              (click)="closeCategoryForm()"
+            >
               Fechar
             </button>
           </div>
@@ -302,15 +455,24 @@
         <div class="section-title-row">
           <div>
             <h3>Novo item</h3>
-            <p>Escolha a categoria e cadastre o que precisa ser levado ou feito.</p>
+
+            <p>
+              Escolha a categoria e cadastre o que precisa ser levado ou feito.
+            </p>
           </div>
         </div>
 
-        <form [formGroup]="itemForm" (ngSubmit)="createItem()" class="form-grid two-cols">
+        <form
+          [formGroup]="itemForm"
+          (ngSubmit)="createItem()"
+          class="form-grid two-cols"
+        >
           <label class="field">
             <span>Categoria</span>
+
             <select formControlName="category_id">
               <option value="">Selecione uma categoria</option>
+
               <option *ngFor="let c of categories" [value]="c.id">
                 {{ c.name }} — {{ modeLabel(c.mode) }}
               </option>
@@ -319,30 +481,54 @@
 
           <label class="field">
             <span>Item</span>
-            <input formControlName="title" placeholder="Ex: Camiseta, escova, carregador" />
+
+            <input
+              formControlName="title"
+              placeholder="Ex: Camiseta, escova, carregador"
+            />
           </label>
 
           <label class="field compact-field">
             <span>Quantidade</span>
-            <input type="number" formControlName="qty" />
+
+            <input
+              type="number"
+              formControlName="qty"
+            />
           </label>
 
           <label class="field compact-field">
             <span>Unidade</span>
-            <input formControlName="unit" placeholder="unidade, pacote, kg" />
+
+            <input
+              formControlName="unit"
+              placeholder="unidade, pacote, kg"
+            />
           </label>
 
           <label class="field span-all">
             <span>Observações</span>
-            <textarea formControlName="notes" placeholder="Alguma informação importante sobre o item"></textarea>
+
+            <textarea
+              formControlName="notes"
+              placeholder="Alguma informação importante sobre o item"
+            ></textarea>
           </label>
 
           <div class="form-actions span-all">
-            <button class="btn btn-primary" type="submit" [disabled]="itemLoading || categories.length === 0">
+            <button
+              class="btn btn-primary"
+              type="submit"
+              [disabled]="itemLoading || categories.length === 0"
+            >
               {{ itemLoading ? 'Criando...' : 'Criar item' }}
             </button>
 
-            <button class="btn btn-ghost" type="button" (click)="closeItemForm()">
+            <button
+              class="btn btn-ghost"
+              type="button"
+              (click)="closeItemForm()"
+            >
               Fechar
             </button>
           </div>
@@ -355,22 +541,47 @@
         <div class="column-header">
           <div>
             <h3>{{ category.name }}</h3>
-            <span class="column-subtitle">{{ modeLabel(category.mode) }}</span>
+
+            <span class="column-subtitle">
+              {{ modeLabel(category.mode) }}
+            </span>
           </div>
-          <span class="count-pill">{{ itemsByCategory(category.id).length }}</span>
+
+          <span class="count-pill">
+            {{ itemsByCategory(category.id).length }}
+          </span>
         </div>
 
         <div *ngIf="isAdmin()" class="column-admin-actions">
-          <button class="btn btn-small btn-primary" type="button" (click)="openQuickItemForm(category)">
+          <button
+            class="btn btn-small btn-primary"
+            type="button"
+            (click)="openQuickItemForm(category)"
+          >
             + Item rápido
           </button>
-          <button class="btn btn-small btn-muted" type="button" (click)="openItemFormForCategory(category)">
+
+          <button
+            class="btn btn-small btn-muted"
+            type="button"
+            (click)="openItemFormForCategory(category)"
+          >
             Formulário completo
           </button>
-          <button class="btn btn-small btn-muted" type="button" (click)="editCategory(category)">
+
+          <button
+            class="btn btn-small btn-muted"
+            type="button"
+            (click)="editCategory(category)"
+          >
             Editar lista
           </button>
-          <button class="btn btn-small btn-ghost danger-button" type="button" (click)="deleteCategory(category)">
+
+          <button
+            class="btn btn-small btn-ghost danger-button"
+            type="button"
+            (click)="deleteCategory(category)"
+          >
             Excluir lista
           </button>
         </div>
@@ -384,32 +595,56 @@
           >
             <label class="field">
               <span>Novo item nesta lista</span>
-              <input formControlName="title" placeholder="Ex: Repelente, pão, documento" />
+
+              <input
+                formControlName="title"
+                placeholder="Ex: Repelente, pão, documento"
+              />
             </label>
 
             <div class="inline-fields">
               <label class="field compact-field">
                 <span>Qtd.</span>
-                <input type="number" formControlName="qty" />
+
+                <input
+                  type="number"
+                  formControlName="qty"
+                />
               </label>
 
               <label class="field compact-field">
                 <span>Unidade</span>
-                <input formControlName="unit" placeholder="unidade" />
+
+                <input
+                  formControlName="unit"
+                  placeholder="unidade"
+                />
               </label>
             </div>
 
             <label class="field">
               <span>Observações</span>
-              <textarea formControlName="notes" placeholder="Opcional"></textarea>
+
+              <textarea
+                formControlName="notes"
+                placeholder="Opcional"
+              ></textarea>
             </label>
 
             <div class="form-actions">
-              <button class="btn btn-small btn-primary" type="submit" [disabled]="quickItemLoading">
+              <button
+                class="btn btn-small btn-primary"
+                type="submit"
+                [disabled]="quickItemLoading"
+              >
                 {{ quickItemLoading ? 'Adicionando...' : 'Criar e continuar' }}
               </button>
 
-              <button class="btn btn-small btn-ghost" type="button" (click)="closeQuickItemForm()">
+              <button
+                class="btn btn-small btn-ghost"
+                type="button"
+                (click)="closeQuickItemForm()"
+              >
                 Cancelar
               </button>
             </div>
@@ -423,6 +658,7 @@
           >
             <div class="card-topline">
               <h4>{{ item.title }}</h4>
+
               <span
                 class="status-badge"
                 [class.done]="item.my_status === 'DONE'"
@@ -432,18 +668,32 @@
               </span>
             </div>
 
-            <p *ngIf="item.notes" class="card-description">{{ item.notes }}</p>
+            <p *ngIf="item.notes" class="card-description">
+              {{ item.notes }}
+            </p>
 
             <div class="meta-row">
-              <span *ngIf="item.qty">Qtd: {{ item.qty }} {{ item.unit || '' }}</span>
-              <span>{{ modeLabel(item.category_mode) }}</span>
+              <span *ngIf="item.qty">
+                Qtd: {{ item.qty }} {{ item.unit || '' }}
+              </span>
+
+              <span>
+                {{ modeLabel(item.category_mode) }}
+              </span>
             </div>
 
-            <div class="responsibility-box" [class.mine]="item.my_claimed" [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by">
+            <div
+              class="responsibility-box"
+              [class.mine]="item.my_claimed"
+              [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by"
+            >
               <strong>
                 {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Checklist' }}
               </strong>
-              <span>{{ responsibleText(item) }}</span>
+
+              <span>
+                {{ responsibleText(item) }}
+              </span>
             </div>
 
             <div class="card-actions participant-actions">
@@ -500,6 +750,7 @@
               >
                 Editar item
               </button>
+
               <button
                 class="btn btn-small btn-ghost danger-button"
                 type="button"
@@ -519,24 +770,43 @@
             + Adicionar item nesta lista
           </button>
 
-          <p *ngIf="itemsByCategory(category.id).length === 0" class="empty-state compact">
+          <p
+            *ngIf="itemsByCategory(category.id).length === 0"
+            class="empty-state compact"
+          >
             Nenhum item nesta lista.
           </p>
         </div>
       </article>
 
-      <article class="board-column helper-column" *ngIf="categories.length === 0">
+      <article
+        class="board-column helper-column"
+        *ngIf="categories.length === 0"
+      >
         <div class="column-header">
           <h3>Comece por uma categoria</h3>
-          <span class="count-pill">0</span>
+
+          <span class="count-pill">
+            0
+          </span>
         </div>
+
         <div class="column-body">
           <div class="travel-card muted-card">
             <h4>Exemplo</h4>
-            <p>Crie uma categoria como “Roupas” para depois adicionar itens como camisetas e calças.</p>
+
+            <p>
+              Crie uma categoria como “Roupas” para depois adicionar itens como
+              camisetas e calças.
+            </p>
           </div>
 
-          <button *ngIf="isAdmin()" class="add-card-button" type="button" (click)="openCategoryForm()">
+          <button
+            *ngIf="isAdmin()"
+            class="add-card-button"
+            type="button"
+            (click)="openCategoryForm()"
+          >
             + Criar primeira categoria
           </button>
         </div>
