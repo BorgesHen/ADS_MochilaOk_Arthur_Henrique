@@ -4,6 +4,76 @@ const { requireAuth } = require("../middleware/requireAuth");
 
 const router = express.Router();
 
+const BRAZIL_STATES = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+]);
+
+function parseTripLocation(location) {
+  const raw = String(location || "").trim();
+
+  if (!raw) {
+    return {
+      raw: "",
+      origin: null,
+      destination: null,
+    };
+  }
+
+  const parts = raw
+    .split(/\s+-\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 1) {
+    return {
+      raw,
+      origin: null,
+      destination: raw,
+    };
+  }
+
+  const lastPart = parts[parts.length - 1].toUpperCase();
+
+  /**
+   * Caso: "Gramado - RS"
+   * Aqui não é origem/destino. É cidade + UF.
+   */
+  if (parts.length === 2 && BRAZIL_STATES.has(lastPart)) {
+    return {
+      raw,
+      origin: null,
+      destination: raw,
+    };
+  }
+
+  /**
+   * Caso: "Passo Fundo - Gramado - RS"
+   * Destino = "Gramado - RS"
+   * Origem = "Passo Fundo"
+   */
+  if (parts.length >= 3 && BRAZIL_STATES.has(lastPart)) {
+    return {
+      raw,
+      origin: parts.slice(0, -2).join(" - "),
+      destination: parts.slice(-2).join(" - "),
+    };
+  }
+
+  /**
+   * Caso: "Carazinho - Ubatuba"
+   * Destino = "Ubatuba"
+   * Origem = "Carazinho"
+   */
+  return {
+    raw,
+    origin: parts.slice(0, -1).join(" - "),
+    destination: parts[parts.length - 1],
+  };
+}
+
+
 function getUserId(req) {
   return req.user?.sub || req.user?.id;
 }
@@ -69,6 +139,17 @@ router.post("/destinations/:id/ai/suggestions", requireAuth, async (req, res) =>
 
     const destination = destinationResult.rows[0];
 
+    const parsedLocation = parseTripLocation(destination.location);
+
+const destinationForAi =
+  parsedLocation.destination ||
+  destination.location ||
+  destination.title;
+
+const originForAi =
+  parsedLocation.origin ||
+  "não informado";
+
     const itemsResult = await pool.query(
       `
       SELECT
@@ -107,8 +188,17 @@ router.post("/destinations/:id/ai/suggestions", requireAuth, async (req, res) =>
     const prompt = `
 Você é um assistente de planejamento de viagens dentro do app MochilaOK.
 
-Destino/local da viagem:
-${destinationName || "Destino não informado"}
+Nome da viagem:
+${destination.title}
+
+Campo informado pelo usuário:
+${destination.location || "não informado"}
+
+Origem / cidade de saída:
+${originForAi}
+
+Destino principal para pesquisa:
+${destinationForAi}
 
 Duração:
 ${days}
@@ -127,7 +217,14 @@ ${existingItems || "Nenhum item cadastrado ainda."}
 
 Monte sugestões práticas para essa viagem, em português do Brasil.
 
-Quero que você organize a resposta nestes blocos:
+Muito importante:
+- Use o "Destino principal para pesquisa" como local principal para pontos turísticos, restaurantes, passeios e entretenimento.
+- Use a origem apenas para dicas de deslocamento, quando fizer sentido.
+- Não trate a origem como destino turístico principal.
+- Não invente endereço exato se não tiver certeza.
+- Priorize opções conhecidas e relevantes para o destino informado.
+
+Organize a resposta nestes blocos:
 
 1. Pontos turísticos recomendados
 2. Passeios e experiências
@@ -135,6 +232,8 @@ Quero que você organize a resposta nestes blocos:
 4. Entretenimento ou atividades extras
 5. Dicas práticas para a viagem
 6. Itens que poderiam ser adicionados na mochila
+
+Inclua uma observação dizendo que horários, valores e disponibilidade devem ser conferidos antes da visita.
 
 Regras:
 - Seja objetivo e útil.

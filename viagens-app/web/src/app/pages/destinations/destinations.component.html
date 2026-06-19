@@ -50,8 +50,17 @@
         </label>
 
         <label class="field">
-          <span>Destino / local</span>
-          <input type="text" formControlName="location" placeholder="Ex: Ubatuba - SP" />
+          <span>Saída e destino</span>
+
+          <input
+            type="text"
+            formControlName="location"
+            placeholder="Ex: Passo Fundo - Gramado - RS"
+          />
+
+          <small>
+            Use o formato: cidade de saída - destino. Exemplo: Passo Fundo - Gramado - RS.
+          </small>
         </label>
 
         <div class="form-actions span-all">
