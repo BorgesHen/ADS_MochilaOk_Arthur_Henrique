@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DestinationsService } from '../../services/destinations.service';
 import { CategoriesService, CategoryMode } from '../../services/categories.service';
 import { ItemsService } from '../../services/items.service';
+import { AiService } from '../../services/ai.service';
 
 @Component({
   standalone: true,
@@ -19,6 +20,7 @@ export class DestinationDetail implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private cdr = inject(ChangeDetectorRef);
+  private aiApi = inject(AiService);
 
   private destinationsApi = inject(DestinationsService);
   private categoriesApi = inject(CategoriesService);
@@ -776,4 +778,53 @@ export class DestinationDetail implements OnInit {
       },
     });
   }
+
+//Configuração IA
+  aiLoading = false;
+  aiError: string | null = null;
+  aiAnswer: string | null = null;
+  aiSources: any[] = [];
+
+  aiForm = this.fb.group({
+  days: [''],
+  budget: ['moderado'],
+  travelStyle: ['equilibrado'],
+  interests: [''],
+});
+  generateAiSuggestions() {
+  this.aiError = null;
+  this.aiAnswer = null;
+  this.aiSources = [];
+
+  const rawInterests = this.aiForm.get('interests')?.value || '';
+
+  const interests = rawInterests
+    .split(',')
+    .map((item: string) => item.trim())
+    .filter(Boolean);
+
+  this.aiLoading = true;
+
+  this.aiApi
+    .getDestinationSuggestions(this.destinationId, {
+      days: this.aiForm.get('days')?.value || '',
+      budget: this.aiForm.get('budget')?.value || 'moderado',
+      travelStyle: this.aiForm.get('travelStyle')?.value || 'equilibrado',
+      interests,
+    })
+    .subscribe({
+      next: (r: any) => {
+        this.aiLoading = false;
+        this.aiAnswer = r.answer || 'Não foi possível gerar sugestões.';
+        this.aiSources = r.sources || [];
+        this.cdr?.detectChanges?.();
+      },
+      error: (e: any) => {
+        this.aiLoading = false;
+        this.aiError =
+          e?.error?.error || 'Erro ao gerar sugestões para a viagem.';
+        this.cdr?.detectChanges?.();
+      },
+    });
+}
 }

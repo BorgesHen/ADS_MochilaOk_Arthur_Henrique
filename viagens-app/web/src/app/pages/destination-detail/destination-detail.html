@@ -91,6 +91,92 @@
             <p>O criador da viagem é administrador. Convidados podem marcar e assumir itens.</p>
           </div>
 
+          <section class="form-card ai-card">
+  <div class="section-title-row">
+    <div>
+      <h3>Sugestões com IA</h3>
+      <p>
+        Receba ideias de pontos turísticos, restaurantes, passeios e itens para
+        organizar melhor esta viagem.
+      </p>
+    </div>
+  </div>
+
+  <form
+    [formGroup]="aiForm"
+    class="form-grid"
+    (ngSubmit)="generateAiSuggestions()"
+  >
+    <div>
+      <label>Duração da viagem</label>
+      <input formControlName="days" placeholder="Ex: 3 dias, 1 semana" />
+    </div>
+
+    <div>
+      <label>Orçamento</label>
+      <select formControlName="budget">
+        <option value="econômico">Econômico</option>
+        <option value="moderado">Moderado</option>
+        <option value="confortável">Confortável</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Estilo</label>
+      <select formControlName="travelStyle">
+        <option value="equilibrado">Equilibrado</option>
+        <option value="família">Família</option>
+        <option value="aventura">Aventura</option>
+        <option value="cultural">Cultural</option>
+        <option value="gastronômico">Gastronômico</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Interesses</label>
+      <input
+        formControlName="interests"
+        placeholder="Ex: praia, museus, trilhas, comida italiana"
+      />
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit" [disabled]="aiLoading">
+        {{ aiLoading ? 'Pesquisando...' : 'Sugerir passeios com IA' }}
+      </button>
+    </div>
+  </form>
+
+  <p *ngIf="aiError" class="error-message">
+    {{ aiError }}
+  </p>
+
+  <article *ngIf="aiAnswer" class="ai-result">
+    <h4>Ideias para esta viagem</h4>
+
+    <div class="ai-answer">
+      {{ aiAnswer }}
+    </div>
+
+    <div *ngIf="aiSources.length > 0" class="ai-sources">
+      <h5>Fontes do Google Maps</h5>
+
+      <ul>
+        <li *ngFor="let source of aiSources">
+          <a [href]="source.uri" target="_blank" rel="noopener noreferrer">
+            {{ source.title }}
+          </a>
+        </li>
+      </ul>
+
+      <small>
+        Dados e fontes fornecidos pelo
+        <span translate="no">Google Maps</span>.
+      </small>
+    </div>
+  </article>
+</section>
+
           <button *ngIf="isAdmin() && !showInviteForm" class="btn btn-small btn-primary" type="button" (click)="openInviteForm()">
             + Membro
           </button>

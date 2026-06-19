@@ -1031,4 +1031,54 @@ h4 {
   .trip-card-actions .btn {
     width: 100%;
   }
+
+  .ai-card {
+  margin-bottom: 1rem;
+}
+
+.ai-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(22, 163, 184, 0.18);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.ai-result h4 {
+  margin: 0 0 0.75rem;
+  color: #2f5266;
+}
+
+.ai-answer {
+  white-space: pre-wrap;
+  color: #3f6175;
+  line-height: 1.65;
+}
+
+.ai-sources {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(22, 163, 184, 0.16);
+}
+
+.ai-sources h5 {
+  margin: 0 0 0.5rem;
+  color: #2f5266;
+}
+
+.ai-sources ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.ai-sources a {
+  color: #0ea5b7;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ai-sources a:hover {
+  text-decoration: underline;
+}
+
 }

@@ -8,6 +8,7 @@ const authRoutes = require("./routes/auth");
 const destinationsRouter = require("./routes/destinations");
 const categoriesRouter = require("./routes/categories");
 const itemsRouter = require("./routes/items");
+const aiRoutes = require("./routes/ai")
 
 console.log("[BOOT] MochilaOk API iniciando...");
 console.log("[BOOT] CORS FIX DEFINITIVO 2026-06-10 02");
@@ -78,6 +79,7 @@ app.use("/destinations", destinationsRouter);
 app.use("/destinations", categoriesRouter);
 
 app.use(itemsRouter);
+app.use(aiRoutes)
 
 const PORT = Number(process.env.PORT) || 3001;
 
