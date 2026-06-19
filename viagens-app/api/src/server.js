@@ -76,7 +76,8 @@ app.get("/debug-cors", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/destinations", destinationsRouter);
 app.use("/destinations", categoriesRouter);
-app.use("/destinations", itemsRouter);
+
+app.use(itemsRouter);
 
 const PORT = Number(process.env.PORT) || 3001;
 
