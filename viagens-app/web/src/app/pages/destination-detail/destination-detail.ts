@@ -7,6 +7,7 @@ import { DestinationsService } from '../../services/destinations.service';
 import { CategoriesService, CategoryMode } from '../../services/categories.service';
 import { ItemsService } from '../../services/items.service';
 import { AiService } from '../../services/ai.service';
+import { finalize, take } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -779,61 +780,103 @@ export class DestinationDetail implements OnInit {
     });
   }
 
-//Configuração IA
+  // Configuração IA
   aiLoading = false;
   aiError: string | null = null;
   aiAnswer: string | null = null;
   aiSources: any[] = [];
 
+  aiSections: {
+    title: string;
+    description: string;
+    items: {
+      name: string;
+      details: string;
+      tag?: string;
+    }[];
+  }[] = [];
+
   aiForm = this.fb.group({
-  days: [''],
-  budget: ['moderado'],
-  travelStyle: ['equilibrado'],
-  interests: [''],
-});
+    days: [''],
+    budget: ['moderado'],
+    travelStyle: ['equilibrado'],
+    interests: [''],
+  });
+
   generateAiSuggestions() {
-  this.aiError = null;
-  this.aiAnswer = null;
-  this.aiSections = [];
-  this.aiSources = [];
+    this.aiError = null;
+    this.aiAnswer = null;
+    this.aiSections = [];
+    this.aiSources = [];
+    this.aiLoading = true;
+    this.refreshView();
 
-  const rawInterests = this.aiForm.get('interests')?.value || '';
+    const rawInterests = this.aiForm.get('interests')?.value || '';
 
-  const interests = rawInterests
-    .split(',')
-    .map((item: string) => item.trim())
-    .filter(Boolean);
+    const interests = rawInterests
+      .split(',')
+      .map((item: string) => item.trim())
+      .filter(Boolean);
 
-  this.aiLoading = true;
+    this.aiApi
+      .getDestinationSuggestions(this.destinationId, {
+        days: this.aiForm.get('days')?.value || '',
+        budget: this.aiForm.get('budget')?.value || 'moderado',
+        travelStyle: this.aiForm.get('travelStyle')?.value || 'equilibrado',
+        interests,
+      })
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.aiLoading = false;
+          this.refreshView();
+        })
+      )
+      .subscribe({
+        next: (r: any) => {
+          console.log('[AI RESPONSE]', r);
 
-  this.aiApi
-    .getDestinationSuggestions(this.destinationId, {
-      days: this.aiForm.get('days')?.value || '',
-      budget: this.aiForm.get('budget')?.value || 'moderado',
-      travelStyle: this.aiForm.get('travelStyle')?.value || 'equilibrado',
-      interests,
-    })
-    .subscribe({
-      next: (r: any) => {
-        this.aiLoading = false;
-        this.aiAnswer = r.answer || 'Sugestões geradas para esta viagem.';
-        this.aiSections = Array.isArray(r.sections) ? r.sections : [];
-        this.aiSources = r.sources || [];
-      },
-      error: (e: any) => {
-        this.aiLoading = false;
-        this.aiError =
-          e?.error?.error || 'Erro ao gerar sugestões para a viagem.';
-      },
-    });
-}
-          aiSections: {
-          title: string;
-          description: string;
-          items: {
-            name: string;
-            details: string;
-            tag?: string;
-          }[];
-        }[] = [];
-}
+          this.aiAnswer =
+            r?.answer ||
+            r?.summary ||
+            'Sugestões geradas para esta viagem.';
+
+          this.aiSections = Array.isArray(r?.sections)
+            ? r.sections.map((section: any) => ({
+                title: section?.title || 'Sugestão',
+                description: section?.description || '',
+                items: Array.isArray(section?.items)
+                  ? section.items.map((item: any) => ({
+                      name: item?.name || 'Sugestão',
+                      details: item?.details || '',
+                      tag: item?.tag || '',
+                    }))
+                  : [],
+              }))
+            : [];
+
+          this.aiSources = Array.isArray(r?.sources)
+            ? r.sources
+            : [];
+
+          this.refreshView();
+        },
+        error: (e: any) => {
+          console.error('[AI ERROR]', e);
+
+          if (e?.name === 'TimeoutError') {
+            this.aiError = 'A IA demorou muito para responder. Tente novamente.';
+            this.refreshView();
+            return;
+          }
+
+          this.aiError =
+            e?.error?.error ||
+            e?.error?.detail ||
+            'Erro ao gerar sugestões para a viagem.';
+
+          this.refreshView();
+        },
+      });
+    }
+  }
