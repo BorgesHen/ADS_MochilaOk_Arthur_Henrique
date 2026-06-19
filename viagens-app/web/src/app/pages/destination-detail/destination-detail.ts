@@ -794,6 +794,7 @@ export class DestinationDetail implements OnInit {
   generateAiSuggestions() {
   this.aiError = null;
   this.aiAnswer = null;
+  this.aiSections = [];
   this.aiSources = [];
 
   const rawInterests = this.aiForm.get('interests')?.value || '';
@@ -815,16 +816,24 @@ export class DestinationDetail implements OnInit {
     .subscribe({
       next: (r: any) => {
         this.aiLoading = false;
-        this.aiAnswer = r.answer || 'Não foi possível gerar sugestões.';
+        this.aiAnswer = r.answer || 'Sugestões geradas para esta viagem.';
+        this.aiSections = Array.isArray(r.sections) ? r.sections : [];
         this.aiSources = r.sources || [];
-        this.cdr?.detectChanges?.();
       },
       error: (e: any) => {
         this.aiLoading = false;
         this.aiError =
           e?.error?.error || 'Erro ao gerar sugestões para a viagem.';
-        this.cdr?.detectChanges?.();
       },
     });
 }
+          aiSections: {
+          title: string;
+          description: string;
+          items: {
+            name: string;
+            details: string;
+            tag?: string;
+          }[];
+        }[] = [];
 }

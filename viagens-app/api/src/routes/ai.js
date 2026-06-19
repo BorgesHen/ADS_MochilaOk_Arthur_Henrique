@@ -186,81 +186,163 @@ const originForAi =
       .join(" - ");
 
     const prompt = `
-Você é um assistente de planejamento de viagens dentro do app MochilaOK.
+        Você é um assistente de planejamento de viagens dentro do app MochilaOK.
 
-Nome da viagem:
-${destination.title}
+        Nome da viagem:
+        ${destination.title}
 
-Campo informado pelo usuário:
-${destination.location || "não informado"}
+        Campo informado pelo usuário:
+        ${destination.location || "não informado"}
 
-Origem / cidade de saída:
-${originForAi}
+        Origem / cidade de saída:
+        ${originForAi}
 
-Destino principal para pesquisa:
-${destinationForAi}
+        Destino principal para pesquisa:
+        ${destinationForAi}
 
-Duração:
-${days}
+        Duração:
+        ${days}
 
-Orçamento:
-${budget}
+        Orçamento:
+        ${budget}
 
-Estilo da viagem:
-${travelStyle}
+        Estilo da viagem:
+        ${travelStyle}
 
-Interesses dos viajantes:
-${interests.length ? interests.join(", ") : "não informado"}
+        Interesses dos viajantes:
+        ${interests.length ? interests.join(", ") : "não informado"}
 
-Itens já cadastrados na mochila:
-${existingItems || "Nenhum item cadastrado ainda."}
+        Itens já cadastrados na mochila:
+        ${existingItems || "Nenhum item cadastrado ainda."}
 
-Monte sugestões práticas para essa viagem, em português do Brasil.
+        Monte sugestões práticas para essa viagem, em português do Brasil.
 
-Muito importante:
-- Use o "Destino principal para pesquisa" como local principal para pontos turísticos, restaurantes, passeios e entretenimento.
-- Use a origem apenas para dicas de deslocamento, quando fizer sentido.
-- Não trate a origem como destino turístico principal.
-- Não invente endereço exato se não tiver certeza.
-- Priorize opções conhecidas e relevantes para o destino informado.
+        Muito importante:
+        - Use o destino principal como local principal para pontos turísticos, restaurantes, passeios e entretenimento.
+        - Use a origem apenas para dicas de deslocamento, quando fizer sentido.
+        - Não trate a origem como destino turístico principal.
+        - Não invente endereço exato se não tiver certeza.
+        - Priorize opções conhecidas e relevantes para o destino informado.
+        - Seja objetivo, claro e útil.
+        - Horários, valores e disponibilidade devem ser conferidos antes da visita.
 
-Organize a resposta nestes blocos:
+        Crie exatamente estas seções:
+        1. Pontos turísticos recomendados
+        2. Passeios e experiências
+        3. Restaurantes e lugares para comer
+        4. Entretenimento ou atividades extras
+        5. Dicas práticas para a viagem
+        6. Itens que poderiam ser adicionados na mochila
 
-1. Pontos turísticos recomendados
-2. Passeios e experiências
-3. Restaurantes e lugares para comer
-4. Entretenimento ou atividades extras
-5. Dicas práticas para a viagem
-6. Itens que poderiam ser adicionados na mochila
+        Cada seção deve ter de 2 a 5 sugestões.
+        Cada sugestão deve ter:
+        - name: nome curto da sugestão
+        - details: explicação útil em 1 ou 2 frases
+        - tag: etiqueta curta, como Família, Econômico, Aventura, Cultura, Gastronomia, Segurança ou Organização
+        `;
 
-Inclua uma observação dizendo que horários, valores e disponibilidade devem ser conferidos antes da visita.
+    const { GoogleGenAI, Type } = await import("@google/genai");
 
-Regras:
-- Seja objetivo e útil.
-- Não invente endereço exato se não tiver certeza.
-- Priorize opções conhecidas e relevantes para o destino.
-- Quando fizer sentido, indique se é melhor para família, amigos, casal, aventura, economia ou gastronomia.
-- Inclua uma observação dizendo que horários, valores e disponibilidade devem ser conferidos antes da visita.
-`;
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
-    const { GoogleGenAI } = await import("@google/genai");
-
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-    });
-
-    const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        tools: [
-          {
-            googleMaps: {},
+const response = await ai.models.generateContent({
+  model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  contents: prompt,
+  config: {
+    temperature: 0.4,
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: Type.OBJECT,
+      properties: {
+        summary: {
+          type: Type.STRING,
+          description: "Resumo curto da viagem e do tipo de sugestão gerada.",
+        },
+        sections: {
+          type: Type.ARRAY,
+          description: "Categorias de sugestões para a viagem.",
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: {
+                type: Type.STRING,
+                description: "Título da categoria.",
+              },
+              description: {
+                type: Type.STRING,
+                description: "Descrição curta da categoria.",
+              },
+              items: {
+                type: Type.ARRAY,
+                description: "Sugestões dentro da categoria.",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    name: {
+                      type: Type.STRING,
+                      description: "Nome da sugestão.",
+                    },
+                    details: {
+                      type: Type.STRING,
+                      description: "Explicação curta e útil da sugestão.",
+                    },
+                    tag: {
+                      type: Type.STRING,
+                      description: "Etiqueta curta, como Família, Econômico, Aventura, Gastronomia ou Cultura.",
+                    },
+                  },
+                  required: ["name", "details"],
+                },
+              },
+            },
+            required: ["title", "description", "items"],
           },
-        ],
-        temperature: 0.4,
+        },
       },
-    });
+      required: ["summary", "sections"],
+    },
+  },
+});
+
+let structured;
+
+try {
+  structured = JSON.parse(response.text || "{}");
+} catch (parseErr) {
+  console.error("Erro ao interpretar JSON do Gemini:", parseErr);
+
+  structured = {
+    summary: "Não foi possível organizar a resposta em cards.",
+    sections: [],
+  };
+}
+
+const normalizedSections = Array.isArray(structured.sections)
+  ? structured.sections.map((section) => ({
+      title: section.title || "Sugestão",
+      description: section.description || "",
+      items: Array.isArray(section.items)
+        ? section.items.map((item) => ({
+            name: item.name || "Sugestão",
+            details: item.details || "",
+            tag: item.tag || "",
+          }))
+        : [],
+    }))
+  : [];
+
+return res.json({
+  destination: {
+    id: destination.id,
+    title: destination.title,
+    location: destination.location,
+  },
+  answer: structured.summary || "Sugestões geradas para esta viagem.",
+  sections: normalizedSections,
+  sources: [],
+});
 
     const sources = getMapsSources(response);
 

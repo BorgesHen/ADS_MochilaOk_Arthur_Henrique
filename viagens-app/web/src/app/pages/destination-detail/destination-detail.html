@@ -218,34 +218,66 @@
         {{ aiError }}
       </p>
 
-      <article *ngIf="aiAnswer" class="ai-result">
-        <h4>Ideias para esta viagem</h4>
+      <article *ngIf="aiAnswer || aiSections.length > 0" class="ai-result">
+  <div class="ai-result-header">
+    <div>
+      <h4>Ideias para esta viagem</h4>
 
-        <div class="ai-answer">
-          {{ aiAnswer }}
-        </div>
+      <p *ngIf="aiAnswer">
+        {{ aiAnswer }}
+      </p>
+    </div>
+  </div>
 
-        <div *ngIf="aiSources.length > 0" class="ai-sources">
-          <h5>Fontes do Google Maps</h5>
+  <div *ngIf="aiSections.length > 0" class="ai-sections-grid">
+    <section class="ai-section-card" *ngFor="let section of aiSections">
+      <div class="ai-section-header">
+        <h5>{{ section.title }}</h5>
 
-          <ul>
-            <li *ngFor="let source of aiSources">
-              <a
-                [href]="source.uri"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {{ source.title }}
-              </a>
-            </li>
-          </ul>
+        <p *ngIf="section.description">
+          {{ section.description }}
+        </p>
+      </div>
 
-          <small>
-            Dados e fontes fornecidos pelo
-            <span translate="no">Google Maps</span>.
-          </small>
-        </div>
-      </article>
+      <div class="ai-suggestion-list">
+        <article class="ai-suggestion-card" *ngFor="let item of section.items">
+          <div class="ai-suggestion-topline">
+            <h6>{{ item.name }}</h6>
+
+            <span *ngIf="item.tag" class="ai-tag">
+              {{ item.tag }}
+            </span>
+          </div>
+
+          <p>
+            {{ item.details }}
+          </p>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <div *ngIf="aiSources.length > 0" class="ai-sources">
+    <h5>Fontes do Google Maps</h5>
+
+    <ul>
+      <li *ngFor="let source of aiSources">
+        <a
+          [href]="source.uri"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {{ source.title }}
+        </a>
+      </li>
+    </ul>
+
+    <small>
+      Dados e fontes fornecidos pelo
+      <span translate="no">Google Maps</span>.
+    </small>
+  </div>
+</article>
     </section>
 
     <br>

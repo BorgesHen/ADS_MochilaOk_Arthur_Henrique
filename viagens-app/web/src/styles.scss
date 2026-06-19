@@ -1081,4 +1081,141 @@ h4 {
   text-decoration: underline;
 }
 
+.ai-result {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(22, 163, 184, 0.18);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1rem 2.5rem rgba(31, 64, 85, 0.08);
+}
+
+.ai-result-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ai-result-header h4 {
+  margin: 0;
+  color: #2f5266;
+  font-size: 1.25rem;
+}
+
+.ai-result-header p {
+  margin: 0.35rem 0 0;
+  color: #4f7084;
+  line-height: 1.6;
+}
+
+.ai-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.ai-section-card {
+  padding: 1rem;
+  border: 1px solid rgba(22, 163, 184, 0.18);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(230, 248, 250, 0.9), rgba(255, 255, 255, 0.95));
+}
+
+.ai-section-header {
+  margin-bottom: 0.85rem;
+}
+
+.ai-section-header h5 {
+  margin: 0;
+  color: #2f5266;
+  font-size: 1rem;
+}
+
+.ai-section-header p {
+  margin: 0.35rem 0 0;
+  color: #5d7889;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.ai-suggestion-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ai-suggestion-card {
+  padding: 0.85rem;
+  border: 1px solid rgba(22, 163, 184, 0.15);
+  border-radius: 0.85rem;
+  background: #ffffff;
+}
+
+.ai-suggestion-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.ai-suggestion-card h6 {
+  margin: 0;
+  color: #2f5266;
+  font-size: 0.95rem;
+}
+
+.ai-suggestion-card p {
+  margin: 0;
+  color: #4f7084;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.ai-tag {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(22, 163, 184, 0.12);
+  color: #0d8da0;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ai-sources {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(22, 163, 184, 0.16);
+}
+
+.ai-sources h5 {
+  margin: 0 0 0.5rem;
+  color: #2f5266;
+}
+
+.ai-sources ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.ai-sources a {
+  color: #0ea5b7;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ai-sources a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  .ai-result {
+    padding: 1rem;
+  }
+
+  .ai-sections-grid {
+    grid-template-columns: 1fr;
+  }
+}
 }
