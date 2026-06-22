@@ -6,8 +6,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DestinationsService } from '../../services/destinations.service';
 import { CategoriesService, CategoryMode } from '../../services/categories.service';
 import { ItemsService } from '../../services/items.service';
-import { AiService } from '../../services/ai.service';
 import { finalize, take } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import { AiService,AiSuggestionSection} from '../../services/ai.service';
 
 @Component({
   standalone: true,
@@ -780,21 +781,16 @@ export class DestinationDetail implements OnInit {
     });
   }
 
-  // Configuração IA
+    // Configuração IA
+  private aiApi = inject(AiService);
+
+  apiUrl = environment.apiUrl.replace(/\/$/, '');
+
   aiLoading = false;
   aiError: string | null = null;
   aiAnswer: string | null = null;
   aiSources: any[] = [];
-
-  aiSections: {
-    title: string;
-    description: string;
-    items: {
-      name: string;
-      details: string;
-      tag?: string;
-    }[];
-  }[] = [];
+  aiSections: AiSuggestionSection[] = [];
 
   aiForm = this.fb.group({
     days: [''],
@@ -850,6 +846,8 @@ export class DestinationDetail implements OnInit {
                       name: item?.name || 'Sugestão',
                       details: item?.details || '',
                       tag: item?.tag || '',
+                      searchQuery: item?.searchQuery || '',
+                      place: item?.place || null,
                     }))
                   : [],
               }))
@@ -878,5 +876,5 @@ export class DestinationDetail implements OnInit {
           this.refreshView();
         },
       });
-    }
   }
+}

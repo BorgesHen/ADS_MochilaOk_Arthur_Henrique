@@ -217,7 +217,7 @@
       <p *ngIf="aiError" class="error-message">
         {{ aiError }}
       </p>
-
+        <br>
       <article *ngIf="aiAnswer || aiSections.length > 0" class="ai-result">
   <div class="ai-result-header">
     <div>
@@ -241,20 +241,83 @@
 
       <div class="ai-suggestion-list">
         <article class="ai-suggestion-card" *ngFor="let item of section.items">
-          <div class="ai-suggestion-topline">
-            <h6>{{ item.name }}</h6>
-
-            <span *ngIf="item.tag" class="ai-tag">
-              {{ item.tag }}
-            </span>
+          <div class="ai-image-wrapper" *ngIf="item.place?.photoUrl">
+            <img
+              class="ai-place-image"
+              [src]="apiUrl + item.place.photoUrl"
+              [alt]="item.name"
+              loading="lazy"
+            />
           </div>
 
-          <p>
-            {{ item.details }}
-          </p>
+          <div class="ai-image-placeholder" *ngIf="!item.place?.photoUrl">
+            <span>Sem imagem disponível</span>
+          </div>
+
+          <div class="ai-suggestion-content">
+            <div class="ai-suggestion-topline">
+              <h6>{{ item.name }}</h6>
+
+              <span *ngIf="item.tag" class="ai-tag">
+                {{ item.tag }}
+              </span>
+            </div>
+
+            <p>
+              {{ item.details }}
+            </p>
+
+            <div *ngIf="item.place" class="ai-place-meta">
+              <span *ngIf="item.place.rating">
+                Nota: {{ item.place.rating }}
+              </span>
+
+              <span *ngIf="item.place.address">
+                {{ item.place.address }}
+              </span>
+
+              <a
+                *ngIf="item.place.googleMapsUri"
+                [href]="item.place.googleMapsUri"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ver no Google Maps
+              </a>
+            </div>
+
+            <small
+              *ngIf="item.place?.photoAttributions?.length"
+              class="ai-photo-attribution"
+            >
+              Foto:
+              <span
+                *ngFor="let attr of item.place.photoAttributions; let last = last"
+              >
+                <a
+                  *ngIf="attr.uri"
+                  [href]="attr.uri"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ attr.displayName || 'Google Maps' }}
+                </a>
+
+                <span *ngIf="!attr.uri">
+                  {{ attr.displayName || 'Google Maps' }}
+                </span>
+
+                {{ last ? '' : ', ' }}
+              </span>
+            </small>
+          </div>
         </article>
       </div>
     </section>
+  </div>
+
+  <div *ngIf="aiSections.length === 0 && aiAnswer" class="ai-answer">
+    {{ aiAnswer }}
   </div>
 
   <div *ngIf="aiSources.length > 0" class="ai-sources">
