@@ -10,6 +10,22 @@ const BRAZIL_STATES = new Set([
   "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ]);
 
+function getUserId(req) {
+  return req.user?.sub || req.user?.id;
+}
+
+function normalizeText(value) {
+  return String(value || "").trim();
+}
+
+function normalizeForSearch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
 function parseTripLocation(location) {
   const raw = String(location || "").trim();
 
@@ -36,7 +52,7 @@ function parseTripLocation(location) {
 
   const lastPart = parts[parts.length - 1].toUpperCase();
 
-  /**
+  /*
    * Caso: "Gramado - RS"
    * Aqui não é origem/destino. É cidade + UF.
    */
@@ -48,7 +64,7 @@ function parseTripLocation(location) {
     };
   }
 
-  /**
+  /*
    * Caso: "Passo Fundo - Gramado - RS"
    * Destino = "Gramado - RS"
    * Origem = "Passo Fundo"
@@ -61,7 +77,7 @@ function parseTripLocation(location) {
     };
   }
 
-  /**
+  /*
    * Caso: "Carazinho - Ubatuba"
    * Destino = "Ubatuba"
    * Origem = "Carazinho"
@@ -71,14 +87,6 @@ function parseTripLocation(location) {
     origin: parts.slice(0, -1).join(" - "),
     destination: parts[parts.length - 1],
   };
-}
-
-function getUserId(req) {
-  return req.user?.sub || req.user?.id;
-}
-
-function normalizeText(value) {
-  return String(value || "").trim();
 }
 
 function withTimeout(promise, ms, message) {
@@ -105,8 +113,249 @@ function clampNumber(value, min, max, fallback) {
   return Math.max(min, Math.min(max, numberValue));
 }
 
-function shouldTryPhotoForSection(sectionTitle) {
+function inferAiFocus(travelStyle, interests) {
+  const text = normalizeForSearch(
+    [travelStyle, ...(interests || [])].join(" ")
+  );
+
+  if (
+    text.includes("gastronom") ||
+    text.includes("comida") ||
+    text.includes("restaurante") ||
+    text.includes("japonesa") ||
+    text.includes("japones") ||
+    text.includes("sushi") ||
+    text.includes("cafe") ||
+    text.includes("cafeteria") ||
+    text.includes("bar") ||
+    text.includes("churrasco") ||
+    text.includes("pizza") ||
+    text.includes("sobremesa")
+  ) {
+    return {
+      key: "gastronomy",
+      label: "Gastronômico",
+      sections: [
+        "Restaurantes recomendados",
+        "Experiências gastronômicas",
+        "Cafés, bares e sobremesas",
+        "Dicas gastronômicas para a viagem",
+      ],
+      allowedPlaceTypes: [
+        "restaurant",
+        "cafe",
+        "bar",
+        "food_experience",
+        "practical_tip",
+      ],
+      instruction:
+        "Retorne somente sugestões gastronômicas. Não retorne pontos turísticos, museus, igrejas, praças, parques, shoppings ou passeios genéricos, a menos que estejam diretamente ligados à gastronomia.",
+    };
+  }
+
+  if (
+    text.includes("aventura") ||
+    text.includes("trilha") ||
+    text.includes("acamp") ||
+    text.includes("camping") ||
+    text.includes("natureza") ||
+    text.includes("radical") ||
+    text.includes("cachoeira") ||
+    text.includes("bike") ||
+    text.includes("ciclismo")
+  ) {
+    return {
+      key: "adventure",
+      label: "Aventura",
+      sections: [
+        "Atividades de aventura",
+        "Trilhas, natureza e ar livre",
+        "Locais para acampamento ou contato com a natureza",
+        "Itens úteis para aventura",
+      ],
+      allowedPlaceTypes: [
+        "park",
+        "campground",
+        "trail",
+        "tourist_attraction",
+        "adventure_activity",
+        "packing_item",
+        "practical_tip",
+      ],
+      instruction:
+        "Retorne somente sugestões ligadas a aventura, trilhas, natureza, parques, acampamentos, atividades ao ar livre e itens úteis para esse tipo de viagem. Não retorne restaurantes, pontos turísticos urbanos ou passeios culturais genéricos.",
+    };
+  }
+
+  if (
+    text.includes("cultural") ||
+    text.includes("cultura") ||
+    text.includes("museu") ||
+    text.includes("historia") ||
+    text.includes("histórico") ||
+    text.includes("teatro") ||
+    text.includes("arte") ||
+    text.includes("arquitetura")
+  ) {
+    return {
+      key: "culture",
+      label: "Cultural",
+      sections: [
+        "Museus e espaços culturais",
+        "História e arquitetura",
+        "Eventos, teatros e experiências culturais",
+        "Dicas culturais para a viagem",
+      ],
+      allowedPlaceTypes: [
+        "museum",
+        "theater",
+        "cultural_center",
+        "tourist_attraction",
+        "practical_tip",
+      ],
+      instruction:
+        "Retorne somente sugestões culturais, históricas, artísticas, arquitetônicas ou de eventos culturais. Não retorne restaurantes, aventuras ou passeios genéricos, exceto se tiverem relação direta com cultura local.",
+    };
+  }
+
+  if (
+    text.includes("familia") ||
+    text.includes("família") ||
+    text.includes("crianca") ||
+    text.includes("criança") ||
+    text.includes("infantil")
+  ) {
+    return {
+      key: "family",
+      label: "Família",
+      sections: [
+        "Passeios para família",
+        "Locais tranquilos e seguros",
+        "Restaurantes e atividades familiares",
+        "Dicas práticas para viajar em família",
+      ],
+      allowedPlaceTypes: [
+        "park",
+        "museum",
+        "shopping_mall",
+        "restaurant",
+        "family_activity",
+        "practical_tip",
+      ],
+      instruction:
+        "Retorne somente sugestões adequadas para família, crianças, passeios seguros, leves e com boa estrutura.",
+    };
+  }
+
+  return {
+    key: "balanced",
+    label: "Equilibrado",
+    sections: [
+      "Pontos turísticos recomendados",
+      "Passeios e experiências",
+      "Restaurantes e lugares para comer",
+      "Entretenimento ou atividades extras",
+      "Dicas práticas para a viagem",
+      "Itens que poderiam ser adicionados na mochila",
+    ],
+    allowedPlaceTypes: [
+      "tourist_attraction",
+      "restaurant",
+      "cafe",
+      "bar",
+      "park",
+      "museum",
+      "shopping_mall",
+      "lodging",
+      "practical_tip",
+      "packing_item",
+      "food_experience",
+      "adventure_activity",
+      "family_activity",
+      "cultural_center",
+      "theater",
+      "trail",
+      "campground",
+      "other",
+    ],
+    instruction:
+      "Retorne sugestões variadas e equilibradas, incluindo pontos turísticos, alimentação, entretenimento, dicas práticas e itens úteis.",
+  };
+}
+
+function budgetInstruction(budget) {
+  const normalized = normalizeForSearch(budget);
+
+  if (normalized.includes("econom")) {
+    return "Priorize opções acessíveis, gratuitas, de baixo custo ou com bom custo-benefício. Evite sugestões muito caras.";
+  }
+
+  if (normalized.includes("confort")) {
+    return "Priorize opções mais confortáveis, bem avaliadas, com boa estrutura e experiências diferenciadas. Não precisa focar apenas no menor preço.";
+  }
+
+  return "Priorize opções com bom equilíbrio entre custo, qualidade e praticidade.";
+}
+
+function filterSectionsByFocus(sections, focus) {
+  if (!Array.isArray(sections)) {
+    return [];
+  }
+
+  if (focus.key === "balanced") {
+    return sections;
+  }
+
+  const allowedTypes = new Set(focus.allowedPlaceTypes || []);
+
+  return sections
+    .map((section) => {
+      const items = Array.isArray(section.items)
+        ? section.items.filter((item) => {
+            const placeType = String(item.placeType || "").trim();
+
+            return allowedTypes.has(placeType);
+          })
+        : [];
+
+      return {
+        ...section,
+        items,
+      };
+    })
+    .filter((section) => section.items.length > 0);
+}
+
+function shouldLookupPlace(item, sectionTitle) {
+  const placeType = String(item.placeType || "").toLowerCase();
   const title = String(sectionTitle || "").toLowerCase();
+
+  if (!item.searchQuery) {
+    return false;
+  }
+
+  if (
+    [
+      "tourist_attraction",
+      "restaurant",
+      "cafe",
+      "bar",
+      "park",
+      "museum",
+      "shopping_mall",
+      "lodging",
+      "food_experience",
+      "adventure_activity",
+      "family_activity",
+      "cultural_center",
+      "theater",
+      "trail",
+      "campground",
+      "other",
+    ].includes(placeType)
+  ) {
+    return true;
+  }
 
   return (
     title.includes("ponto") ||
@@ -120,7 +369,7 @@ function shouldTryPhotoForSection(sectionTitle) {
   );
 }
 
-async function findPlaceWithPhoto(searchQuery) {
+async function findPlaceDetails(searchQuery) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!apiKey || !searchQuery) {
@@ -139,7 +388,15 @@ async function findPlaceWithPhoto(searchQuery) {
             "places.displayName",
             "places.formattedAddress",
             "places.rating",
+            "places.userRatingCount",
             "places.googleMapsUri",
+            "places.websiteUri",
+            "places.nationalPhoneNumber",
+            "places.businessStatus",
+            "places.priceLevel",
+            "places.currentOpeningHours.openNow",
+            "places.currentOpeningHours.weekdayDescriptions",
+            "places.regularOpeningHours.weekdayDescriptions",
             "places.photos.name",
             "places.photos.authorAttributions",
           ].join(","),
@@ -151,14 +408,12 @@ async function findPlaceWithPhoto(searchQuery) {
         }),
       }),
       10000,
-      "Tempo limite ao buscar imagem no Google Places."
+      "Tempo limite ao buscar local no Google Places."
     );
 
     if (!response.ok) {
       const text = await response.text();
-
       console.warn("[PLACES] Erro ao buscar local:", response.status, text);
-
       return null;
     }
 
@@ -172,12 +427,28 @@ async function findPlaceWithPhoto(searchQuery) {
     const photo = Array.isArray(place.photos) ? place.photos[0] : null;
     const photoName = photo?.name || null;
 
+    const currentOpeningHours = place.currentOpeningHours || null;
+    const regularOpeningHours = place.regularOpeningHours || null;
+
     return {
       placeId: place.id || null,
       name: place.displayName?.text || null,
       address: place.formattedAddress || null,
       rating: place.rating || null,
+      userRatingCount: place.userRatingCount || null,
       googleMapsUri: place.googleMapsUri || null,
+      websiteUri: place.websiteUri || null,
+      phone: place.nationalPhoneNumber || null,
+      businessStatus: place.businessStatus || null,
+      priceLevel: place.priceLevel || null,
+      openNow:
+        typeof currentOpeningHours?.openNow === "boolean"
+          ? currentOpeningHours.openNow
+          : null,
+      openingHoursText:
+        currentOpeningHours?.weekdayDescriptions ||
+        regularOpeningHours?.weekdayDescriptions ||
+        [],
       photoName,
       photoUrl: photoName
         ? `/places/photo?name=${encodeURIComponent(photoName)}&maxWidthPx=720`
@@ -185,8 +456,7 @@ async function findPlaceWithPhoto(searchQuery) {
       photoAttributions: photo?.authorAttributions || [],
     };
   } catch (err) {
-    console.warn("[PLACES] Falha ao enriquecer local:", err.message);
-
+    console.warn("[PLACES] Falha ao buscar detalhes do local:", err.message);
     return null;
   }
 }
@@ -196,44 +466,49 @@ async function enrichSectionsWithPlaces(sections, destinationForAi) {
     return sections;
   }
 
-  const maxPhotosPerSection = clampNumber(
-    process.env.PLACES_MAX_PHOTOS_PER_SECTION,
+  const maxPlacesPerSection = clampNumber(
+    process.env.PLACES_MAX_PLACES_PER_SECTION ||
+      process.env.PLACES_MAX_PHOTOS_PER_SECTION,
     0,
     5,
     2
   );
 
-  if (maxPhotosPerSection <= 0) {
+  if (maxPlacesPerSection <= 0) {
     return sections;
   }
 
   return Promise.all(
     sections.map(async (section) => {
-      if (!shouldTryPhotoForSection(section.title)) {
-        return section;
-      }
-
-      let photosUsed = 0;
+      let lookupsUsed = 0;
 
       const enrichedItems = await Promise.all(
         section.items.map(async (item) => {
-          if (photosUsed >= maxPhotosPerSection) {
+          if (!shouldLookupPlace(item, section.title)) {
             return {
               ...item,
               place: null,
             };
           }
 
-          photosUsed += 1;
+          if (lookupsUsed >= maxPlacesPerSection) {
+            return {
+              ...item,
+              place: null,
+            };
+          }
+
+          lookupsUsed += 1;
 
           const query =
             item.searchQuery ||
             `${item.name || ""} ${destinationForAi || ""}`.trim();
 
-          const place = await findPlaceWithPhoto(query);
+          const place = await findPlaceDetails(query);
 
           return {
             ...item,
+            name: place?.name || item.name,
             place,
           };
         })
@@ -363,9 +638,12 @@ router.post("/destinations/:id/ai/suggestions", requireAuth, async (req, res) =>
       ? req.body.interests.map(normalizeText).filter(Boolean)
       : [];
 
+    const focus = inferAiFocus(travelStyle, interests);
+
     console.log("[AI] Iniciando sugestões");
     console.log("[AI] destinationId:", destinationId);
     console.log("[AI] userId:", userId);
+    console.log("[AI] focus:", focus.key);
 
     const destinationResult = await pool.query(
       `
@@ -442,8 +720,6 @@ router.post("/destinations/:id/ai/suggestions", requireAuth, async (req, res) =>
       })
       .join("\n");
 
-
-//prompt de pesquisa
     const prompt = `
 Você é um assistente de planejamento de viagens dentro do app MochilaOK.
 
@@ -465,45 +741,52 @@ ${days}
 Orçamento:
 ${budget}
 
-Estilo da viagem:
+Estilo solicitado:
 ${travelStyle}
 
 Interesses dos viajantes:
 ${interests.length ? interests.join(", ") : "não informado"}
 
+Modo de pesquisa definido pelo sistema:
+${focus.label}
+
 Itens já cadastrados na mochila:
 ${existingItems || "Nenhum item cadastrado ainda."}
 
-Monte sugestões práticas para essa viagem, em português do Brasil.
+Regras obrigatórias de escopo:
+${focus.instruction}
+
+Regra de orçamento:
+${budgetInstruction(budget)}
 
 Muito importante:
-- Use o destino principal como local principal para pontos turísticos, restaurantes, passeios e entretenimento.
+- Responda em português do Brasil.
+- Não invente endereço exato, telefone, avaliação, horário ou preço.
+- Horários, avaliações, endereço e link do Maps serão preenchidos pelo Google Places, não por você.
+- Use o destino principal como local principal da pesquisa.
 - Use a origem apenas para dicas de deslocamento, quando fizer sentido.
 - Não trate a origem como destino turístico principal.
-- Não invente endereço exato, telefone, avaliação, horário ou preço.
-- Não use nomes genéricos como "Restaurante de comida japonesa", "Cafeteria local", "Pizzaria" ou "Bar da região".
-- Para restaurantes, pontos turísticos, parques, museus, bares, cafés e entretenimentos, gere uma searchQuery clara para o Google Places encontrar lugares reais.
-- Se não souber um nome real com segurança, use name como uma intenção curta, mas faça searchQuery com o tipo de local + destino.
-- Exemplo: name = "Restaurantes japoneses em Passo Fundo"; searchQuery = "restaurante japonês em Passo Fundo RS".
-- Horários, avaliações, endereço e link do Maps serão preenchidos pelo Google Places, não por você.
+- Não crie sugestões fora do estilo e interesse solicitado.
+- Não crie seções genéricas que não estejam relacionadas ao modo de pesquisa.
 - Seja objetivo, claro e útil.
 
-Crie exatamente estas seções:
-1. Pontos turísticos recomendados
-2. Passeios e experiências
-3. Restaurantes e lugares para comer
-4. Entretenimento ou atividades extras
-5. Dicas práticas para a viagem
-6. Itens que poderiam ser adicionados na mochila
+Crie somente estas seções:
+${focus.sections.map((section, index) => `${index + 1}. ${section}`).join("\n")}
 
 Cada seção deve ter de 2 a 5 sugestões.
 
 Cada sugestão deve ter:
-- name: nome curto da sugestão ou intenção
-- details: explicação útil em 1 ou 2 frases
-- tag: etiqueta curta, como Família, Econômico, Aventura, Cultura, Gastronomia, Segurança ou Organização
-- searchQuery: texto para pesquisar no Google Places. Para locais reais, inclua tipo de local + destino principal. Para itens de mochila ou dicas práticas, pode ser vazio.
-- placeType: use um destes valores: tourist_attraction, restaurant, cafe, bar, park, museum, shopping_mall, lodging, practical_tip, packing_item, other.
+- name: nome curto da sugestão ou intenção.
+- details: explicação útil em 1 ou 2 frases.
+- tag: etiqueta curta, como ${focus.label}, Econômico, Confortável, Organização, Segurança ou Experiência.
+- searchQuery: texto para pesquisar no Google Places. Para locais reais, inclua tipo de local + destino principal. Para dicas ou itens que não sejam lugares reais, pode ser vazio.
+- placeType: escolha apenas um destes valores: ${focus.allowedPlaceTypes.join(", ")}.
+
+Exemplos de comportamento:
+- Se o modo for Gastronômico, retorne somente restaurantes, cafés, bares, experiências gastronômicas e dicas gastronômicas.
+- Se o modo for Aventura, retorne somente trilhas, parques, acampamentos, natureza, atividades ao ar livre e itens úteis para aventura.
+- Se o modo for Cultural, retorne somente museus, teatros, arquitetura, eventos e experiências culturais.
+- Se o modo for Família, retorne somente opções leves, seguras e adequadas para família.
 `;
 
     const { GoogleGenAI, Type } = await import("@google/genai");
@@ -519,7 +802,7 @@ Cada sugestão deve ter:
         model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         contents: prompt,
         config: {
-          temperature: 0.4,
+          temperature: 0.3,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -551,7 +834,7 @@ Cada sugestão deve ter:
                         properties: {
                           name: {
                             type: Type.STRING,
-                            description: "Nome da sugestão.",
+                            description: "Nome curto da sugestão.",
                           },
                           details: {
                             type: Type.STRING,
@@ -561,15 +844,20 @@ Cada sugestão deve ter:
                           tag: {
                             type: Type.STRING,
                             description:
-                              "Etiqueta curta, como Família, Econômico, Aventura, Gastronomia ou Cultura.",
+                              "Etiqueta curta da sugestão.",
                           },
                           searchQuery: {
                             type: Type.STRING,
                             description:
-                              "Consulta para encontrar este local no Google Places. Inclua nome do local, cidade e estado quando possível. Para dicas práticas ou itens de mochila, pode ser vazio.",
+                              "Consulta para encontrar este local no Google Places. Para dicas ou itens que não sejam lugares reais, pode ser vazio.",
+                          },
+                          placeType: {
+                            type: Type.STRING,
+                            description:
+                              "Tipo da sugestão, obedecendo os tipos permitidos no prompt.",
                           },
                         },
-                        required: ["name", "details"],
+                        required: ["name", "details", "searchQuery", "placeType"],
                       },
                     },
                   },
@@ -595,7 +883,7 @@ Cada sugestão deve ter:
       console.error("Erro ao interpretar JSON do Gemini:", parseErr);
 
       structured = {
-        summary: response.text || "Sugestões geradas para esta viagem.",
+        summary: response.text || `Sugestões geradas no modo ${focus.label}.`,
         sections: [],
       };
     }
@@ -610,13 +898,16 @@ Cada sugestão deve ter:
                 details: item.details || "",
                 tag: item.tag || "",
                 searchQuery: item.searchQuery || "",
+                placeType: item.placeType || "other",
               }))
             : [],
         }))
       : [];
 
+    const focusedSections = filterSectionsByFocus(normalizedSections, focus);
+
     const enrichedSections = await enrichSectionsWithPlaces(
-      normalizedSections,
+      focusedSections,
       destinationForAi
     );
 
@@ -628,7 +919,13 @@ Cada sugestão deve ter:
         title: destination.title,
         location: destination.location,
       },
-      answer: structured.summary || "Sugestões geradas para esta viagem.",
+      answer:
+        structured.summary ||
+        `Sugestões geradas no modo ${focus.label}.`,
+      focus: {
+        key: focus.key,
+        label: focus.label,
+      },
       sections: enrichedSections,
       sources,
     });
