@@ -442,6 +442,8 @@ router.post("/destinations/:id/ai/suggestions", requireAuth, async (req, res) =>
       })
       .join("\n");
 
+
+//prompt de pesquisa
     const prompt = `
 Você é um assistente de planejamento de viagens dentro do app MochilaOK.
 
@@ -478,10 +480,13 @@ Muito importante:
 - Use o destino principal como local principal para pontos turísticos, restaurantes, passeios e entretenimento.
 - Use a origem apenas para dicas de deslocamento, quando fizer sentido.
 - Não trate a origem como destino turístico principal.
-- Não invente endereço exato se não tiver certeza.
-- Priorize opções conhecidas e relevantes para o destino informado.
+- Não invente endereço exato, telefone, avaliação, horário ou preço.
+- Não use nomes genéricos como "Restaurante de comida japonesa", "Cafeteria local", "Pizzaria" ou "Bar da região".
+- Para restaurantes, pontos turísticos, parques, museus, bares, cafés e entretenimentos, gere uma searchQuery clara para o Google Places encontrar lugares reais.
+- Se não souber um nome real com segurança, use name como uma intenção curta, mas faça searchQuery com o tipo de local + destino.
+- Exemplo: name = "Restaurantes japoneses em Passo Fundo"; searchQuery = "restaurante japonês em Passo Fundo RS".
+- Horários, avaliações, endereço e link do Maps serão preenchidos pelo Google Places, não por você.
 - Seja objetivo, claro e útil.
-- Horários, valores e disponibilidade devem ser conferidos antes da visita.
 
 Crie exatamente estas seções:
 1. Pontos turísticos recomendados
@@ -494,10 +499,11 @@ Crie exatamente estas seções:
 Cada seção deve ter de 2 a 5 sugestões.
 
 Cada sugestão deve ter:
-- name: nome curto da sugestão
+- name: nome curto da sugestão ou intenção
 - details: explicação útil em 1 ou 2 frases
 - tag: etiqueta curta, como Família, Econômico, Aventura, Cultura, Gastronomia, Segurança ou Organização
-- searchQuery: texto curto para pesquisar o local no Google Places. Quando for um ponto turístico, restaurante, passeio ou entretenimento, inclua o nome do local e o destino principal. Para dicas práticas ou itens de mochila, use uma string vazia.
+- searchQuery: texto para pesquisar no Google Places. Para locais reais, inclua tipo de local + destino principal. Para itens de mochila ou dicas práticas, pode ser vazio.
+- placeType: use um destes valores: tourist_attraction, restaurant, cafe, bar, park, museum, shopping_mall, lodging, practical_tip, packing_item, other.
 `;
 
     const { GoogleGenAI, Type } = await import("@google/genai");
