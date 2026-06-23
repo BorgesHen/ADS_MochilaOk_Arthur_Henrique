@@ -105,6 +105,7 @@
       </div>
 
       <div class="admin-quick-actions">
+        <a href="novaCategoria">
         <button
           class="btn btn-primary"
           type="button"
@@ -112,7 +113,9 @@
         >
           + Adicionar categoria
         </button>
+        </a>
 
+        <a href="novoItem">
         <button
           class="btn btn-muted"
           type="button"
@@ -122,7 +125,9 @@
         >
           + Adicionar item
         </button>
+        </a>
 
+        <a href="novoMembro">
         <button
           class="btn btn-outline"
           type="button"
@@ -130,6 +135,7 @@
         >
           + Adicionar membro
         </button>
+        </a>
 
         <button
           class="btn btn-ghost danger-button"
@@ -349,7 +355,7 @@
       <article class="form-card members-card">
         <div class="section-title-row">
           <div>
-            <h3>Participantes da viagem</h3>
+            <h3 id="novoMembro">Participantes da viagem</h3>
 
             <p>
               O criador da viagem é administrador. Convidados podem marcar e
@@ -483,7 +489,7 @@
       <article *ngIf="showCategoryForm" class="form-card">
         <div class="section-title-row">
           <div>
-            <h3>Nova categoria</h3>
+            <h3 id="novaCategoria">Nova categoria</h3>
 
             <p>
               Exemplos: roupas, higiene, documentos, comida.
@@ -551,7 +557,7 @@
       <article *ngIf="showItemForm" class="form-card">
         <div class="section-title-row">
           <div>
-            <h3>Novo item</h3>
+            <h3 id="novoItem">Novo item</h3>
 
             <p>
               Escolha a categoria e cadastre o que precisa ser levado ou feito.
