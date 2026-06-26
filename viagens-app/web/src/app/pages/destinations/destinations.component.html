@@ -38,7 +38,7 @@
     <section class="form-card" *ngIf="showForm">
       <div class="section-title-row">
         <div>
-          <h3>Nova viagem</h3>
+          <h3 id="novaViagem">Nova viagem</h3>
           <p>Informe o nome da viagem e, opcionalmente, o destino.</p>
         </div>
       </div>
@@ -106,9 +106,11 @@
             </div>
           </article>
 
+          <a href="novaViagem">
           <button class="add-card-button" type="button" (click)="openCreateForm()">
             + Adicionar viagem
           </button>
+          </a>
 
           <p *ngIf="destinations.length === 0" class="empty-state">
             Nenhuma viagem cadastrada ainda. Clique em “Criar nova viagem” para começar.

@@ -52,7 +52,7 @@
                   "maximumWarning": "4kB",
                   "maximumError": "8kB"
                 }
-              ],
+              ], 
               "outputHashing": "all"
             },
             "development": {
@@ -74,7 +74,6 @@
                   "with": "src/environments/environment.prod.ts"
                 }
               ]
-              
             },
             "development": {
               "buildTarget": "web:build:development"

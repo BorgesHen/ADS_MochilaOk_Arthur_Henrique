@@ -18,6 +18,7 @@ console.log("[BOOT] DATABASE_URL configurada:", Boolean(process.env.DATABASE_URL
 console.log("[BOOT] JWT_SECRET configurado:", Boolean(process.env.JWT_SECRET));
 console.log("[BOOT] CORS_ORIGIN:", process.env.CORS_ORIGIN);
 console.log("[BOOT] CORS:", process.env.CORS);
+console.log("[BOOT[ GEMINI API iniciando a conexão...")
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
