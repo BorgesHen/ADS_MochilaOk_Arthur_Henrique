@@ -8,7 +8,7 @@ import { CategoriesService, CategoryMode } from '../../services/categories.servi
 import { ItemsService } from '../../services/items.service';
 import { finalize, take } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { AiService,AiSuggestionSection} from '../../services/ai.service';
+import { AiService, AiSuggestionSection } from '../../services/ai.service';
 
 @Component({
   standalone: true,
@@ -107,41 +107,85 @@ export class DestinationDetail implements OnInit {
   }
 
   statusLabel(item: any) {
-    if (item.category_mode === 'CLAIMABLE' && !item.claimed_by) {
-      return 'Disponível';
+    if (item.global_status === 'DONE') {
+      return 'Feito';
     }
 
-    if (item.my_status === 'DONE') {
-      return item.category_mode === 'PER_USER' ? 'Feito por você' : 'Feito';
+    if (item.category_mode === 'CLAIMABLE') {
+      if (item.claimed_by_id || item.claimed_by_name || item.claimed_by_email) {
+        return 'Assumido';
+      }
+
+      return 'Disponível';
     }
 
     return 'Pendente';
   }
 
+  doneByUsers(item: any) {
+    if (Array.isArray(item.done_by_users)) {
+      return item.done_by_users;
+    }
+
+    if (typeof item.done_by_users === 'string') {
+      try {
+        const parsed = JSON.parse(item.done_by_users);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  doneByText(item: any) {
+    const users = this.doneByUsers(item);
+
+    if (users.length === 0) {
+      return '';
+    }
+
+    if (users.length === 1) {
+      return `Feito por ${users[0].name || users[0].email}`;
+    }
+
+    const names = users
+      .map((user: any) => user.name || user.email)
+      .filter(Boolean)
+      .join(', ');
+
+    return `Feito por ${names}`;
+  }
+
   responsibleText(item: any) {
-    if (item.category_mode === 'PER_USER') {
-      return item.my_status === 'DONE'
-        ? 'Você marcou este checklist como feito.'
-        : 'Cada participante marca se já fez esta tarefa.';
+    if (item.category_mode === 'CLAIMABLE') {
+      if (item.claimed_by_name || item.claimed_by_email) {
+        return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
+      }
+
+      return 'Disponível para alguém assumir.';
     }
 
-    if (item.my_claimed) {
-      return 'Você ficou responsável por este item.';
+    const doneText = this.doneByText(item);
+
+    if (doneText) {
+      return doneText;
     }
 
-    if (item.claimed_by_name || item.claimed_by_email) {
-      return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
-    }
-
-    return 'Disponível para alguém assumir.';
+    return 'Cada participante marca se já fez esta tarefa.';
   }
 
   canUserChangeItemStatus(item: any) {
-    return item.category_mode === 'PER_USER' || item.my_claimed === true;
+    if (item.category_mode === 'CLAIMABLE') {
+      return item.my_claimed === true;
+    }
+
+    return true;
   }
 
   isItemClaimedByOther(item: any) {
-    return item.category_mode === 'CLAIMABLE' && !!item.claimed_by && !item.my_claimed;
+    return item.category_mode === 'CLAIMABLE' && Boolean(item.claimed_by_id) && !item.my_claimed;
   }
 
   clearMessages() {
@@ -781,9 +825,7 @@ export class DestinationDetail implements OnInit {
     });
   }
 
-    // Configuração IA
-  private aiApi = inject(AiService);
-
+  // Configuração IA
   apiUrl = environment.apiUrl.replace(/\/$/, '');
 
   aiLoading = false;

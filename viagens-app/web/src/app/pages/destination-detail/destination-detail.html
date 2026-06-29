@@ -755,7 +755,7 @@
 
           <div
             class="travel-card item-card"
-            [class.done-card]="item.my_status === 'DONE'"
+            [class.done-card]="item.global_status === 'DONE'"
             [class.claimed-card]="item.my_claimed"
             *ngFor="let item of itemsByCategory(category.id)"
           >
@@ -764,8 +764,8 @@
 
               <span
                 class="status-badge"
-                [class.done]="item.my_status === 'DONE'"
-                [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by"
+                [class.done]="item.global_status === 'DONE'"
+                [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
               >
                 {{ statusLabel(item) }}
               </span>
@@ -788,15 +788,32 @@
             <div
               class="responsibility-box"
               [class.mine]="item.my_claimed"
-              [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by"
+              [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
+              [class.done]="item.global_status === 'DONE'"
             >
               <strong>
-                {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Checklist' }}
+                {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Conclusão' }}
               </strong>
 
               <span>
                 {{ responsibleText(item) }}
               </span>
+            </div>
+
+            <div
+              *ngIf="doneByUsers(item).length > 0"
+              class="done-by-box"
+            >
+              <strong>Marcado como feito por:</strong>
+
+              <div class="done-user-list">
+                <span
+                  class="done-user-pill"
+                  *ngFor="let user of doneByUsers(item)"
+                >
+                  {{ user.name || user.email }}
+                </span>
+              </div>
             </div>
 
             <div class="card-actions participant-actions">
@@ -807,7 +824,7 @@
                 [disabled]="activeItemLoadingId === item.id"
                 (click)="markDone(item)"
               >
-                Marcar como feito
+                {{ item.global_status === 'DONE' ? 'Também marquei como feito' : 'Marcar como feito' }}
               </button>
 
               <button
@@ -817,12 +834,12 @@
                 [disabled]="activeItemLoadingId === item.id"
                 (click)="markPending(item)"
               >
-                Voltar para pendente
+                Desmarcar meu feito
               </button>
 
               <button
                 class="btn btn-small btn-outline"
-                *ngIf="item.category_mode === 'CLAIMABLE' && !item.my_claimed && !item.claimed_by"
+                *ngIf="item.category_mode === 'CLAIMABLE' && !item.my_claimed && !item.claimed_by_id"
                 type="button"
                 [disabled]="activeItemLoadingId === item.id"
                 (click)="claim(item)"
