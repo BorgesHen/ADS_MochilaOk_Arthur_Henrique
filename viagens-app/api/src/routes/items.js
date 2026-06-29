@@ -98,55 +98,103 @@ router.get("/destinations/:destinationId/items", requireAuth, async (req, res) =
     await ensureDestinationAccess(pool, destinationId, userId);
 
     const result = await pool.query(
-      `
-      SELECT
-        i.id,
-        i.destination_id,
-        i.category_id,
-        i.title,
-        i.qty,
-        i.unit,
-        i.notes,
-        i.created_by,
-        i.created_at,
+  `
+  SELECT
+    i.id,
+    i.destination_id,
+    i.category_id,
+    i.title,
+    i.qty,
+    i.unit,
+    i.notes,
+    i.created_by,
+    i.created_at,
 
-        c.name AS category_name,
-        c.mode AS category_mode,
+    c.name AS category_name,
+    c.mode AS category_mode,
 
-        COALESCE(my_item.status, 'PENDING') AS my_status,
-        COALESCE(my_item.claimed, false) AS my_claimed,
+    COALESCE(my_item.status, 'PENDING') AS my_status,
+    COALESCE(my_item.claimed, false) AS my_claimed,
 
-        claimed_user.id AS claimed_by_id,
-        claimed_user.name AS claimed_by_name,
-        claimed_user.email AS claimed_by_email,
+    claimed_user.id AS claimed_by_id,
+    claimed_user.name AS claimed_by_name,
+    claimed_user.email AS claimed_by_email,
 
-        creator.name AS created_by_name
-      FROM items i
-      JOIN categories c
-        ON c.id = i.category_id
+    done_user.id AS done_by_id,
+    done_user.name AS done_by_name,
+    done_user.email AS done_by_email,
+    done_user.updated_at AS done_at,
 
-      LEFT JOIN item_user my_item
-        ON my_item.item_id = i.id
-       AND my_item.user_id = $2
+    COALESCE(done_users.users, '[]'::json) AS done_by_users,
 
-      LEFT JOIN item_user claimed
-        ON claimed.item_id = i.id
-       AND claimed.claimed = true
+    CASE
+      WHEN done_user.id IS NULL THEN 'PENDING'
+      ELSE 'DONE'
+    END AS global_status,
 
-      LEFT JOIN users claimed_user
-        ON claimed_user.id = claimed.user_id
+    creator.name AS created_by_name
 
-      LEFT JOIN users creator
-        ON creator.id = i.created_by
+  FROM items i
 
-      WHERE i.destination_id = $1
-      ORDER BY
-        c.sort_order ASC,
-        c.name ASC,
-        i.created_at ASC
-      `,
-      [destinationId, userId]
-    );
+  JOIN categories c
+    ON c.id = i.category_id
+
+  LEFT JOIN item_user my_item
+    ON my_item.item_id = i.id
+   AND my_item.user_id = $2
+
+  LEFT JOIN item_user claimed
+    ON claimed.item_id = i.id
+   AND claimed.claimed = true
+
+  LEFT JOIN users claimed_user
+    ON claimed_user.id = claimed.user_id
+
+  LEFT JOIN LATERAL (
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      iu.updated_at
+    FROM item_user iu
+    JOIN users u
+      ON u.id = iu.user_id
+    WHERE iu.item_id = i.id
+      AND iu.status = 'DONE'
+    ORDER BY iu.updated_at DESC
+    LIMIT 1
+  ) done_user ON true
+
+  LEFT JOIN LATERAL (
+    SELECT
+      json_agg(
+        json_build_object(
+          'id', u.id,
+          'name', u.name,
+          'email', u.email,
+          'updated_at', iu.updated_at
+        )
+        ORDER BY iu.updated_at DESC
+      ) AS users
+    FROM item_user iu
+    JOIN users u
+      ON u.id = iu.user_id
+    WHERE iu.item_id = i.id
+      AND iu.status = 'DONE'
+  ) done_users ON true
+
+  LEFT JOIN users creator
+    ON creator.id = i.created_by
+
+  WHERE i.destination_id = $1
+
+  ORDER BY
+    c.sort_order ASC,
+    c.name ASC,
+    i.created_at ASC
+  `,
+  [destinationId, userId]
+);
 
     return res.json(result.rows);
   } catch (err) {
