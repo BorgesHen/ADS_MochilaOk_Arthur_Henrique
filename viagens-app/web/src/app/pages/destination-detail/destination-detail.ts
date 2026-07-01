@@ -7,9 +7,11 @@ import { finalize, take } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 import { DestinationsService } from '../../services/destinations.service';
-import { CategoriesService, CategoryMode } from '../../services/categories.service';
+import { CategoriesService } from '../../services/categories.service';
 import { ItemsService } from '../../services/items.service';
 import { AiService } from '../../services/ai.service';
+
+type CategoryMode = 'PER_USER' | 'CLAIMABLE';
 
 @Component({
   standalone: true,
@@ -86,6 +88,7 @@ export class DestinationDetail implements OnInit, OnDestroy {
   aiAnswer: string | null = null;
   aiSources: any[] = [];
   aiSections: any[] = [];
+  aiFocus: any = null;
 
   aiForm = this.fb.group({
     days: [''],
@@ -150,91 +153,154 @@ export class DestinationDetail implements OnInit, OnDestroy {
     return mode === 'PER_USER' ? 'Checklist por pessoa' : 'Item assumível';
   }
 
-  statusLabel(item: any) {
-  if (item.global_status === 'DONE') {
-    return 'Feito';
-  }
-
-  if (item.category_mode === 'CLAIMABLE') {
-    if (item.claimed_by_name || item.claimed_by_email) {
-      return 'Assumido';
+  /**
+   * Define se o item deve aparecer visualmente como feito para o usuário atual.
+   *
+   * ADMIN:
+   * - vê o status global do item.
+   * - se qualquer participante marcou, aparece como feito.
+   *
+   * CONVIDADO:
+   * - vê apenas o próprio status individual.
+   * - se outro usuário marcou, mas ele não marcou, continua pendente para ele.
+   */
+  isItemDoneForView(item: any) {
+    if (this.isAdmin()) {
+      return item.global_status === 'DONE';
     }
 
-    return 'Disponível';
+    return item.my_status === 'DONE';
   }
 
-  return 'Pendente';
-}
+  statusLabel(item: any) {
+    if (this.isItemDoneForView(item)) {
+      return 'Feito';
+    }
 
-doneByUsers(item: any) {
-  if (Array.isArray(item?.done_by_users)) {
-    return item.done_by_users;
+    if (item.category_mode === 'CLAIMABLE') {
+      if (item.claimed_by_name || item.claimed_by_email) {
+        return 'Assumido';
+      }
+
+      return 'Disponível';
+    }
+
+    return 'Pendente';
   }
 
-  if (typeof item?.done_by_users === 'string') {
-    try {
-      const parsed = JSON.parse(item.done_by_users);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
+  isItemClaimedByOther(item: any) {
+    return (
+      item.category_mode === 'CLAIMABLE' &&
+      Boolean(item.claimed_by_id) &&
+      !item.my_claimed
+    );
+  }
+
+  doneByUsers(item: any) {
+    if (Array.isArray(item?.done_by_users)) {
+      return item.done_by_users;
+    }
+
+    if (typeof item?.done_by_users === 'string') {
+      try {
+        const parsed = JSON.parse(item.done_by_users);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  currentUserDone(item: any) {
+    const users = this.doneByUsers(item);
+
+    const explicitCurrentUser = users.find(
+      (user: any) => user.is_current_user === true
+    );
+
+    if (explicitCurrentUser) {
+      return explicitCurrentUser;
+    }
+
+    return null;
+  }
+
+  /**
+   * Mensagens de conclusão exibidas no card.
+   *
+   * ADMIN:
+   * - vê uma mensagem por usuário.
+   * - Ex: "Feito por Henrique Borges", "Feito por Arthur".
+   *
+   * CONVIDADO:
+   * - vê somente a própria marcação.
+   * - Ex: "Feito por Arthur".
+   */
+  doneMessages(item: any) {
+    const users = this.doneByUsers(item);
+
+    if (users.length === 0) {
       return [];
     }
-  }
 
-  return [];
-}
-
-doneByText(item: any) {
-  const users = this.doneByUsers(item);
-
-  if (users.length === 0) {
-    return '';
-  }
-
-  if (users.length === 1) {
-    return `Feito por ${users[0].name || users[0].email}`;
-  }
-
-  const names = users
-    .map((user: any) => user.name || user.email)
-    .filter(Boolean)
-    .join(', ');
-
-  return `Feito por ${names}`;
-}
-
-responsibleText(item: any) {
-  if (item.category_mode === 'CLAIMABLE') {
-    if (item.claimed_by_name || item.claimed_by_email) {
-      return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
+    if (this.isAdmin()) {
+      return users.map((user: any) => ({
+        label: `Feito por ${user.name || user.email}`,
+        user,
+      }));
     }
 
-    return 'Disponível para alguém assumir.';
+    const currentUser = this.currentUserDone(item);
+
+    if (currentUser) {
+      return [
+        {
+          label: `Feito por ${currentUser.name || currentUser.email}`,
+          user: currentUser,
+        },
+      ];
+    }
+
+    return [];
   }
 
-  const doneText = this.doneByText(item);
+  doneByText(item: any) {
+    const messages = this.doneMessages(item);
 
-  if (doneText) {
-    return doneText;
+    if (messages.length === 0) {
+      return '';
+    }
+
+    return messages.map((message: any) => message.label).join(', ');
   }
 
-  return 'Cada participante marca se já fez esta tarefa.';
-}
+  responsibleText(item: any) {
+    if (item.category_mode === 'CLAIMABLE') {
+      if (item.claimed_by_name || item.claimed_by_email) {
+        return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
+      }
 
-isItemClaimedByOther(item: any) {
-  return (
-    item.category_mode === 'CLAIMABLE' &&
-    Boolean(item.claimed_by_id) &&
-    !item.my_claimed
-  );
-}
+      return 'Disponível para alguém assumir.';
+    }
 
-canUserChangeItemStatus(item: any) {
-  if (item.category_mode === 'CLAIMABLE') {
-    return item.my_claimed === true;
+    const doneText = this.doneByText(item);
+
+    if (doneText) {
+      return doneText;
+    }
+
+    return 'Cada participante marca se já fez esta tarefa.';
   }
 
-  return true;
-}
+  canUserChangeItemStatus(item: any) {
+    if (item.category_mode === 'CLAIMABLE') {
+      return item.my_claimed === true;
+    }
+
+    return true;
+  }
 
   private openInitialAdminFormsIfNeeded() {
     if (
@@ -890,6 +956,7 @@ canUserChangeItemStatus(item: any) {
     this.aiAnswer = null;
     this.aiSections = [];
     this.aiSources = [];
+    this.aiFocus = null;
     this.aiLoading = true;
     this.refreshView();
 
@@ -922,6 +989,8 @@ canUserChangeItemStatus(item: any) {
             r?.answer ||
             r?.summary ||
             'Sugestões geradas para esta viagem.';
+
+          this.aiFocus = r?.focus || null;
 
           this.aiSections = Array.isArray(r?.sections)
             ? r.sections.map((section: any) => ({
