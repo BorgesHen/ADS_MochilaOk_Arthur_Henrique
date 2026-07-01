@@ -763,12 +763,10 @@
               <h4>{{ item.title }}</h4>
 
               <span
-  class="status-badge"
-  [class.done]="item.global_status === 'DONE'"
-  [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
->
-  {{ statusLabel(item) }}
-</span>
+                class="status-badge"
+                [class.done]="item.global_status === 'DONE'"
+                [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
+              >
                 {{ statusLabel(item) }}
               </span>
             </div>
@@ -788,35 +786,19 @@
             </div>
 
             <div
-  class="responsibility-box"
-  [class.mine]="item.my_claimed"
-  [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
-  [class.done]="item.global_status === 'DONE'"
->
-  <strong>
-    {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Conclusão' }}
-  </strong>
+              class="responsibility-box"
+              [class.mine]="item.my_claimed"
+              [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
+              [class.done]="item.global_status === 'DONE'"
+            >
+              <strong>
+                {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Conclusão' }}
+              </strong>
 
-  <span>
-    {{ responsibleText(item) }}
-  </span>
-</div>
-
-<div
-  *ngIf="doneByUsers(item).length > 0"
-  class="done-by-box"
->
-  <strong>Marcado como feito por:</strong>
-
-  <div class="done-user-list">
-    <span
-      class="done-user-pill"
-      *ngFor="let user of doneByUsers(item)"
-    >
-      {{ user.name || user.email }}
-    </span>
-  </div>
-</div>
+              <span>
+                {{ responsibleText(item) }}
+              </span>
+            </div>
 
             <div
               *ngIf="doneByUsers(item).length > 0"
@@ -836,14 +818,14 @@
 
             <div class="card-actions participant-actions">
               <button
-  class="btn btn-small btn-primary"
-  *ngIf="canUserChangeItemStatus(item) && item.my_status !== 'DONE'"
-  type="button"
-  [disabled]="activeItemLoadingId === item.id"
-  (click)="markDone(item)"
->
-  {{ item.global_status === 'DONE' ? 'Também marquei como feito' : 'Marcar como feito' }}
-</button>
+                class="btn btn-small btn-primary"
+                *ngIf="canUserChangeItemStatus(item) && item.my_status !== 'DONE'"
+                type="button"
+                [disabled]="activeItemLoadingId === item.id"
+                (click)="markDone(item)"
+              >
+                {{ item.global_status === 'DONE' ? 'Também marquei como feito' : 'Marcar como feito' }}
+              </button>
 
               <button
                 class="btn btn-small btn-muted"
