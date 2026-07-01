@@ -240,7 +240,9 @@ export class DestinationDetail implements OnInit, OnDestroy {
    *
    * ADMIN:
    * - vê uma mensagem por usuário que marcou o item.
-   * - Ex.: "Feito por Henrique Borges", "Feito por Arthur".
+   * - Ex.: "Feito por você", "Feito por Arthur".
+   * - Se a marcação for do próprio admin, mostra "Feito por você" em vez do
+   *   nome dele, mesma regra usada para o convidado.
    *
    * CONVIDADO:
    * - se ele marcou, vê somente "Feito por você".
@@ -256,7 +258,9 @@ export class DestinationDetail implements OnInit, OnDestroy {
 
     if (this.isAdmin()) {
       return users.map((user: any) => ({
-        label: `Feito por ${user.name || user.email}`,
+        label: user.is_current_user
+          ? 'Feito por você'
+          : `Feito por ${user.name || user.email}`,
         user,
       }));
     }
