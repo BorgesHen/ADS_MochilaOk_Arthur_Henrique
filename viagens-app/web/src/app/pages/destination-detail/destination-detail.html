@@ -805,7 +805,7 @@
               class="done-by-box"
             >
               <strong>
-                {{ isAdmin() ? 'Marcações realizadas:' : 'Sua marcação:' }}
+                {{ doneMessagesTitle(item) }}
               </strong>
 
               <div class="done-user-list">
@@ -818,21 +818,6 @@
               </div>
             </div>
 
-            <div
-              *ngIf="doneByUsers(item).length > 0"
-              class="done-by-box"
-            >
-              <strong>Marcado como feito por:</strong>
-
-              <div class="done-user-list">
-                <span
-                  class="done-user-pill"
-                  *ngFor="let user of doneByUsers(item)"
-                >
-                  {{ user.name || user.email }}
-                </span>
-              </div>
-            </div>
 
             <div class="card-actions participant-actions">
               <button

@@ -154,22 +154,16 @@ export class DestinationDetail implements OnInit, OnDestroy {
   }
 
   /**
-   * Define se o item deve aparecer visualmente como feito para o usuário atual.
+   * Define se o item deve aparecer visualmente como feito.
    *
-   * ADMIN:
-   * - vê o status global do item.
-   * - se qualquer participante marcou, aparece como feito.
-   *
-   * CONVIDADO:
-   * - vê apenas o próprio status individual.
-   * - se outro usuário marcou, mas ele não marcou, continua pendente para ele.
+   * Regra usada no quadro:
+   * - O status visual do card é GLOBAL para todos os participantes.
+   * - Se qualquer usuário marcou o item como feito, o card aparece como feito.
+   * - O status individual do usuário logado fica em my_status e controla os botões
+   *   "Marcar como feito" / "Desmarcar meu feito".
    */
   isItemDoneForView(item: any) {
-    if (this.isAdmin()) {
-      return item.global_status === 'DONE';
-    }
-
-    return item.my_status === 'DONE';
+    return item?.global_status === 'DONE';
   }
 
   statusLabel(item: any) {
@@ -224,11 +218,10 @@ export class DestinationDetail implements OnInit, OnDestroy {
       return explicitCurrentUser;
     }
 
-    /*
-     * Fallback:
-     * Caso o backend ainda não retorne is_current_user dentro de done_by_users,
-     * mas o item esteja DONE para o usuário logado, mantemos a visão do convidado
-     * como "Feito por você".
+    /**
+     * Fallback para versões do backend sem is_current_user:
+     * se o backend diz que my_status = DONE, o usuário logado marcou o item,
+     * mesmo que não dê para identificar o nome dele dentro de done_by_users.
      */
     if (item?.my_status === 'DONE') {
       return {
@@ -243,15 +236,16 @@ export class DestinationDetail implements OnInit, OnDestroy {
   }
 
   /**
-   * Mensagens de conclusão exibidas no card.
+   * Mensagens exibidas no card.
    *
    * ADMIN:
-   * - vê uma mensagem por usuário.
-   * - Ex: "Feito por Henrique Borges", "Feito por Arthur".
+   * - vê uma mensagem por usuário que marcou o item.
+   * - Ex.: "Feito por Henrique Borges", "Feito por Arthur".
    *
    * CONVIDADO:
-   * - vê somente a própria marcação.
-   * - Ex: "Feito por você".
+   * - se ele marcou, vê somente "Feito por você".
+   * - se outro participante marcou e ele ainda não marcou, vê quem marcou,
+   *   para que a atualização continue visível para todos.
    */
   doneMessages(item: any) {
     const users = this.doneByUsers(item);
@@ -278,18 +272,26 @@ export class DestinationDetail implements OnInit, OnDestroy {
       ];
     }
 
-    return [];
+    return users.map((user: any) => ({
+      label: `Feito por ${user.name || user.email}`,
+      user,
+    }));
+  }
+
+  doneMessagesTitle(item: any) {
+    if (this.isAdmin()) {
+      return 'Marcações realizadas:';
+    }
+
+    if (item?.my_status === 'DONE' || this.currentUserDone(item)) {
+      return 'Sua marcação:';
+    }
+
+    return 'Marcado por:';
   }
 
   /**
-   * Texto usado no badge do topo do card.
-   *
-   * ADMIN:
-   * - se uma pessoa marcou: "Feito por Nome".
-   * - se várias pessoas marcaram: "2 marcações", "3 marcações" etc.
-   *
-   * CONVIDADO:
-   * - se o próprio usuário marcou: "Feito por você".
+   * Texto do badge no topo do card.
    */
   doneStatusBadgeText(item: any) {
     if (!this.isItemDoneForView(item)) {
@@ -310,7 +312,19 @@ export class DestinationDetail implements OnInit, OnDestroy {
       return 'Feito';
     }
 
-    return 'Feito por você';
+    if (item?.my_status === 'DONE') {
+      return 'Feito por você';
+    }
+
+    if (messages.length === 1) {
+      return messages[0].label;
+    }
+
+    if (messages.length > 1) {
+      return `${messages.length} marcações`;
+    }
+
+    return 'Feito';
   }
 
   doneByText(item: any) {
@@ -328,7 +342,15 @@ export class DestinationDetail implements OnInit, OnDestroy {
       return `${messages.length} participantes marcaram este item como feito.`;
     }
 
-    return 'Você marcou este checklist como feito.';
+    if (item?.my_status === 'DONE') {
+      return 'Você marcou este checklist como feito.';
+    }
+
+    if (messages.length === 1) {
+      return messages[0].label;
+    }
+
+    return `${messages.length} participantes marcaram este item como feito.`;
   }
 
   responsibleText(item: any) {
