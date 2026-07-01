@@ -224,6 +224,21 @@ export class DestinationDetail implements OnInit, OnDestroy {
       return explicitCurrentUser;
     }
 
+    /*
+     * Fallback:
+     * Caso o backend ainda não retorne is_current_user dentro de done_by_users,
+     * mas o item esteja DONE para o usuário logado, mantemos a visão do convidado
+     * como "Feito por você".
+     */
+    if (item?.my_status === 'DONE') {
+      return {
+        id: null,
+        name: 'você',
+        email: null,
+        is_current_user: true,
+      };
+    }
+
     return null;
   }
 
@@ -236,7 +251,7 @@ export class DestinationDetail implements OnInit, OnDestroy {
    *
    * CONVIDADO:
    * - vê somente a própria marcação.
-   * - Ex: "Feito por Arthur".
+   * - Ex: "Feito por você".
    */
   doneMessages(item: any) {
     const users = this.doneByUsers(item);
@@ -257,13 +272,45 @@ export class DestinationDetail implements OnInit, OnDestroy {
     if (currentUser) {
       return [
         {
-          label: `Feito por ${currentUser.name || currentUser.email}`,
+          label: 'Feito por você',
           user: currentUser,
         },
       ];
     }
 
     return [];
+  }
+
+  /**
+   * Texto usado no badge do topo do card.
+   *
+   * ADMIN:
+   * - se uma pessoa marcou: "Feito por Nome".
+   * - se várias pessoas marcaram: "2 marcações", "3 marcações" etc.
+   *
+   * CONVIDADO:
+   * - se o próprio usuário marcou: "Feito por você".
+   */
+  doneStatusBadgeText(item: any) {
+    if (!this.isItemDoneForView(item)) {
+      return this.statusLabel(item);
+    }
+
+    const messages = this.doneMessages(item);
+
+    if (this.isAdmin()) {
+      if (messages.length === 1) {
+        return messages[0].label;
+      }
+
+      if (messages.length > 1) {
+        return `${messages.length} marcações`;
+      }
+
+      return 'Feito';
+    }
+
+    return 'Feito por você';
   }
 
   doneByText(item: any) {
@@ -273,7 +320,15 @@ export class DestinationDetail implements OnInit, OnDestroy {
       return '';
     }
 
-    return messages.map((message: any) => message.label).join(', ');
+    if (this.isAdmin()) {
+      if (messages.length === 1) {
+        return messages[0].label;
+      }
+
+      return `${messages.length} participantes marcaram este item como feito.`;
+    }
+
+    return 'Você marcou este checklist como feito.';
   }
 
   responsibleText(item: any) {

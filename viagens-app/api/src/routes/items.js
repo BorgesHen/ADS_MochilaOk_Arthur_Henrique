@@ -172,7 +172,8 @@ router.get("/destinations/:destinationId/items", requireAuth, async (req, res) =
           'id', u.id,
           'name', u.name,
           'email', u.email,
-          'updated_at', iu.updated_at
+          'updated_at', iu.updated_at,
+          'is_current_user', u.id = $2
         )
         ORDER BY iu.updated_at DESC
       ) AS users

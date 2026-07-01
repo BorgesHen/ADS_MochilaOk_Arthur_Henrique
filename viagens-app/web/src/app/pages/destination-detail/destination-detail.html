@@ -754,21 +754,21 @@
           </form>
 
           <div
-            class="travel-card item-card"
-            [class.done-card]="item.global_status === 'DONE'"
-            [class.claimed-card]="item.my_claimed"
-            *ngFor="let item of itemsByCategory(category.id)"
-          >
+              class="travel-card item-card"
+              [class.done-card]="isItemDoneForView(item)"
+              [class.claimed-card]="item.my_claimed"
+              *ngFor="let item of itemsByCategory(category.id)"
+            > 
             <div class="card-topline">
               <h4>{{ item.title }}</h4>
 
               <span
-                class="status-badge"
-                [class.done]="item.global_status === 'DONE'"
-                [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
+              class="status-badge"
+              [class.done]="isItemDoneForView(item)"
+              [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
               >
-                {{ statusLabel(item) }}
-              </span>
+              {{ doneStatusBadgeText(item) }}
+            </span>
             </div>
 
             <p *ngIf="item.notes" class="card-description">
@@ -786,18 +786,36 @@
             </div>
 
             <div
-              class="responsibility-box"
-              [class.mine]="item.my_claimed"
-              [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
-              [class.done]="item.global_status === 'DONE'"
+            class="responsibility-box"
+            [class.mine]="item.my_claimed"
+            [class.available]="item.category_mode === 'CLAIMABLE' && !item.claimed_by_id"
+            [class.done]="isItemDoneForView(item)"
+            >
+            <strong>
+              {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Conclusão' }}
+            </strong>
+
+            <span>
+              {{ responsibleText(item) }}
+            </span>
+          </div>
+
+          <div
+              *ngIf="doneMessages(item).length > 0"
+              class="done-by-box"
             >
               <strong>
-                {{ item.category_mode === 'CLAIMABLE' ? 'Responsabilidade' : 'Conclusão' }}
+                {{ isAdmin() ? 'Marcações realizadas:' : 'Sua marcação:' }}
               </strong>
 
-              <span>
-                {{ responsibleText(item) }}
-              </span>
+              <div class="done-user-list">
+                <span
+                  class="done-user-pill"
+                  *ngFor="let message of doneMessages(item)"
+                >
+                  {{ message.label }}
+                </span>
+              </div>
             </div>
 
             <div
