@@ -151,86 +151,90 @@ export class DestinationDetail implements OnInit, OnDestroy {
   }
 
   statusLabel(item: any) {
-    if (item.global_status === 'DONE') {
-      return 'Feito';
-    }
-
-    if (item.category_mode === 'CLAIMABLE') {
-      if (item.claimed_by_name || item.claimed_by_email) {
-        return 'Assumido';
-      }
-
-      return 'Disponível';
-    }
-
-    return 'Pendente';
+  if (item.global_status === 'DONE') {
+    return 'Feito';
   }
 
-  isItemClaimedByOther(item: any) {
-    return item.category_mode === 'CLAIMABLE' && Boolean(item.claimed_by_id) && !item.my_claimed;
+  if (item.category_mode === 'CLAIMABLE') {
+    if (item.claimed_by_name || item.claimed_by_email) {
+      return 'Assumido';
+    }
+
+    return 'Disponível';
   }
 
-  doneByUsers(item: any) {
-    if (Array.isArray(item?.done_by_users)) {
-      return item.done_by_users;
-    }
+  return 'Pendente';
+}
 
-    if (typeof item?.done_by_users === 'string') {
-      try {
-        const parsed = JSON.parse(item.done_by_users);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
-      }
-    }
-
-    return [];
+doneByUsers(item: any) {
+  if (Array.isArray(item?.done_by_users)) {
+    return item.done_by_users;
   }
 
-  doneByText(item: any) {
-    const users = this.doneByUsers(item);
-
-    if (users.length === 0) {
-      return '';
+  if (typeof item?.done_by_users === 'string') {
+    try {
+      const parsed = JSON.parse(item.done_by_users);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
-
-    if (users.length === 1) {
-      return `Feito por ${users[0].name || users[0].email}`;
-    }
-
-    const names = users
-      .map((user: any) => user.name || user.email)
-      .filter(Boolean)
-      .join(', ');
-
-    return `Feito por ${names}`;
   }
 
-  responsibleText(item: any) {
-    if (item.category_mode === 'CLAIMABLE') {
-      if (item.claimed_by_name || item.claimed_by_email) {
-        return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
-      }
+  return [];
+}
 
-      return 'Disponível para alguém assumir.';
-    }
+doneByText(item: any) {
+  const users = this.doneByUsers(item);
 
-    const doneText = this.doneByText(item);
-
-    if (doneText) {
-      return doneText;
-    }
-
-    return 'Cada participante marca se já fez esta tarefa.';
+  if (users.length === 0) {
+    return '';
   }
 
-  canUserChangeItemStatus(item: any) {
-    if (item.category_mode === 'CLAIMABLE') {
-      return item.my_claimed === true;
+  if (users.length === 1) {
+    return `Feito por ${users[0].name || users[0].email}`;
+  }
+
+  const names = users
+    .map((user: any) => user.name || user.email)
+    .filter(Boolean)
+    .join(', ');
+
+  return `Feito por ${names}`;
+}
+
+responsibleText(item: any) {
+  if (item.category_mode === 'CLAIMABLE') {
+    if (item.claimed_by_name || item.claimed_by_email) {
+      return `Responsável: ${item.claimed_by_name || item.claimed_by_email}`;
     }
 
-    return true;
+    return 'Disponível para alguém assumir.';
   }
+
+  const doneText = this.doneByText(item);
+
+  if (doneText) {
+    return doneText;
+  }
+
+  return 'Cada participante marca se já fez esta tarefa.';
+}
+
+isItemClaimedByOther(item: any) {
+  return (
+    item.category_mode === 'CLAIMABLE' &&
+    Boolean(item.claimed_by_id) &&
+    !item.my_claimed
+  );
+}
+
+canUserChangeItemStatus(item: any) {
+  if (item.category_mode === 'CLAIMABLE') {
+    return item.my_claimed === true;
+  }
+
+  return true;
+}
 
   private openInitialAdminFormsIfNeeded() {
     if (
