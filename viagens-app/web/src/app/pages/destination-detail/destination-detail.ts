@@ -1,14 +1,15 @@
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize, take } from 'rxjs';
+
+import { environment } from '../../../environments/environment';
 
 import { DestinationsService } from '../../services/destinations.service';
 import { CategoriesService, CategoryMode } from '../../services/categories.service';
 import { ItemsService } from '../../services/items.service';
-import { finalize, take } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { AiService, AiSuggestionSection } from '../../services/ai.service';
+import { AiService } from '../../services/ai.service';
 
 @Component({
   standalone: true,
@@ -17,16 +18,16 @@ import { AiService, AiSuggestionSection } from '../../services/ai.service';
   templateUrl: './destination-detail.html',
   styleUrl: './destination-detail.scss',
 })
-export class DestinationDetail implements OnInit {
+export class DestinationDetail implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private cdr = inject(ChangeDetectorRef);
-  private aiApi = inject(AiService);
 
   private destinationsApi = inject(DestinationsService);
   private categoriesApi = inject(CategoriesService);
   private itemsApi = inject(ItemsService);
+  private aiApi = inject(AiService);
 
   destinationId = '';
   destination: any = null;
@@ -37,6 +38,7 @@ export class DestinationDetail implements OnInit {
   loadingDestination = true;
   error: string | null = null;
   success: string | null = null;
+
   categoryLoading = false;
   itemLoading = false;
   quickItemLoading = false;
@@ -47,6 +49,8 @@ export class DestinationDetail implements OnInit {
   showCategoryForm = false;
   showItemForm = false;
   quickItemCategoryId: string | null = null;
+
+  private itemsPolling: ReturnType<typeof setInterval> | null = null;
 
   inviteForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -74,15 +78,54 @@ export class DestinationDetail implements OnInit {
     notes: [''],
   });
 
+  // Configuração IA
+  apiUrl = environment.apiUrl.replace(/\/$/, '');
+
+  aiLoading = false;
+  aiError: string | null = null;
+  aiAnswer: string | null = null;
+  aiSources: any[] = [];
+  aiSections: any[] = [];
+
+  aiForm = this.fb.group({
+    days: [''],
+    budget: ['moderado'],
+    travelStyle: ['equilibrado'],
+    interests: [''],
+  });
+
   ngOnInit() {
     this.destinationId = this.route.snapshot.paramMap.get('id') ?? '';
     this.loadAll();
+    this.startItemsPolling();
+  }
+
+  ngOnDestroy() {
+    if (this.itemsPolling) {
+      clearInterval(this.itemsPolling);
+      this.itemsPolling = null;
+    }
   }
 
   private refreshView() {
-    // O projeto está rodando em Angular sem Zone.js. Sem esta chamada,
-    // os dados chegam da API, mas a tela pode ficar presa em “Carregando...” até outro clique.
     this.cdr.detectChanges();
+  }
+
+  private startItemsPolling() {
+    if (this.itemsPolling) {
+      clearInterval(this.itemsPolling);
+    }
+
+    this.itemsPolling = setInterval(() => {
+      if (!this.destinationId) return;
+
+      this.loadItems(true);
+    }, 10000);
+  }
+
+  clearMessages() {
+    this.error = null;
+    this.success = null;
   }
 
   goToDestinations(event?: Event) {
@@ -99,6 +142,7 @@ export class DestinationDetail implements OnInit {
 
   roleLabel(role?: string | null) {
     if (!role) return this.loadingDestination ? 'Carregando...' : 'Convidado';
+
     return role === 'ADMIN' ? 'Administrador' : 'Convidado';
   }
 
@@ -112,7 +156,7 @@ export class DestinationDetail implements OnInit {
     }
 
     if (item.category_mode === 'CLAIMABLE') {
-      if (item.claimed_by_id || item.claimed_by_name || item.claimed_by_email) {
+      if (item.claimed_by_name || item.claimed_by_email) {
         return 'Assumido';
       }
 
@@ -122,12 +166,16 @@ export class DestinationDetail implements OnInit {
     return 'Pendente';
   }
 
+  isItemClaimedByOther(item: any) {
+    return item.category_mode === 'CLAIMABLE' && Boolean(item.claimed_by_id) && !item.my_claimed;
+  }
+
   doneByUsers(item: any) {
-    if (Array.isArray(item.done_by_users)) {
+    if (Array.isArray(item?.done_by_users)) {
       return item.done_by_users;
     }
 
-    if (typeof item.done_by_users === 'string') {
+    if (typeof item?.done_by_users === 'string') {
       try {
         const parsed = JSON.parse(item.done_by_users);
         return Array.isArray(parsed) ? parsed : [];
@@ -184,15 +232,6 @@ export class DestinationDetail implements OnInit {
     return true;
   }
 
-  isItemClaimedByOther(item: any) {
-    return item.category_mode === 'CLAIMABLE' && Boolean(item.claimed_by_id) && !item.my_claimed;
-  }
-
-  clearMessages() {
-    this.error = null;
-    this.success = null;
-  }
-
   private openInitialAdminFormsIfNeeded() {
     if (
       this.isAdmin() &&
@@ -246,14 +285,21 @@ export class DestinationDetail implements OnInit {
     });
   }
 
-  loadItems() {
+  loadItems(silent = false) {
+    if (!silent) {
+      this.error = null;
+    }
+
     this.itemsApi.list(this.destinationId).subscribe({
       next: (r: any[]) => {
         this.items = Array.isArray(r) ? r : [];
         this.refreshView();
       },
       error: (e: any) => {
-        this.error = e?.error?.error ?? 'Erro ao carregar itens';
+        if (!silent) {
+          this.error = e?.error?.error ?? 'Erro ao carregar itens';
+        }
+
         this.refreshView();
       },
     });
@@ -326,7 +372,13 @@ export class DestinationDetail implements OnInit {
 
   closeItemForm() {
     this.showItemForm = false;
-    this.itemForm.reset({ category_id: '', title: '', qty: 1, unit: '', notes: '' });
+    this.itemForm.reset({
+      category_id: '',
+      title: '',
+      qty: 1,
+      unit: '',
+      notes: '',
+    });
     this.refreshView();
   }
 
@@ -488,7 +540,6 @@ export class DestinationDetail implements OnInit {
     });
   }
 
-
   deleteDestination() {
     this.clearMessages();
 
@@ -574,6 +625,7 @@ export class DestinationDetail implements OnInit {
     if (modeInput === null) return;
 
     const mode = modeInput.trim().toUpperCase() as CategoryMode;
+
     if (mode !== 'PER_USER' && mode !== 'CLAIMABLE') {
       this.error = 'Modo inválido. Use PER_USER ou CLAIMABLE.';
       this.refreshView();
@@ -605,14 +657,17 @@ export class DestinationDetail implements OnInit {
     const confirmed = window.confirm(
       `Excluir a categoria "${category.name}" e todos os itens dentro dela?`
     );
+
     if (!confirmed) return;
 
     this.categoriesApi.delete(this.destinationId, category.id).subscribe({
       next: () => {
         this.success = 'Categoria excluída.';
+
         if (this.quickItemCategoryId === category.id) {
           this.closeQuickItemForm();
         }
+
         this.refreshView();
         this.loadCategories();
         this.loadItems();
@@ -641,6 +696,7 @@ export class DestinationDetail implements OnInit {
 
     this.itemLoading = true;
     this.refreshView();
+
     const selectedCategory = this.itemForm.get('category_id')?.value ?? '';
 
     this.itemsApi.create(this.destinationId, this.itemForm.getRawValue() as any).subscribe({
@@ -771,7 +827,7 @@ export class DestinationDetail implements OnInit {
     this.itemsApi.setStatus(item.id, 'PENDING').subscribe({
       next: () => {
         this.activeItemLoadingId = null;
-        this.success = 'Item voltou para pendente.';
+        this.success = 'Sua marcação foi removida.';
         this.refreshView();
         this.loadItems();
       },
@@ -825,22 +881,6 @@ export class DestinationDetail implements OnInit {
     });
   }
 
-  // Configuração IA
-  apiUrl = environment.apiUrl.replace(/\/$/, '');
-
-  aiLoading = false;
-  aiError: string | null = null;
-  aiAnswer: string | null = null;
-  aiSources: any[] = [];
-  aiSections: AiSuggestionSection[] = [];
-
-  aiForm = this.fb.group({
-    days: [''],
-    budget: ['moderado'],
-    travelStyle: ['equilibrado'],
-    interests: [''],
-  });
-
   generateAiSuggestions() {
     this.aiError = null;
     this.aiAnswer = null;
@@ -889,6 +929,8 @@ export class DestinationDetail implements OnInit {
                       details: item?.details || '',
                       tag: item?.tag || '',
                       searchQuery: item?.searchQuery || '',
+                      placeType: item?.placeType || 'other',
+                      googleSearchUrl: item?.googleSearchUrl || '',
                       place: item?.place || null,
                     }))
                   : [],
